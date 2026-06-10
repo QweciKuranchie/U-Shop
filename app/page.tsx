@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -10,12 +11,14 @@ export default function Home() {
       {/* Header */}
       <header className="flex justify-between items-center z-10 w-full max-w-7xl mx-auto">
         <div className="flex items-center space-x-2">
-          <span className="bg-gradient-to-r from-pink-500 to-violet-600 text-white font-extrabold px-3 py-1.5 rounded-lg text-xl tracking-tight shadow-lg shadow-purple-950/50">
-            U
-          </span>
-          <span className="font-bold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-200">
-            shop
-          </span>
+          <Image
+            src="/logo.png"
+            alt="U-Shop Logo"
+            width={150}
+            height={50}
+            priority
+            className="h-10 w-auto object-contain"
+          />
         </div>
         <div>
           <span className="bg-white/10 hover:bg-white/15 backdrop-blur-md text-sm font-semibold px-4 py-2 rounded-full border border-white/10 transition duration-300 cursor-pointer">
