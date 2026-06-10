@@ -42,3 +42,9 @@ next-env.d.ts
 # turbo
 .turbo
 .claude
+
+# Sentry Config File
+.env.sentry-build-plugin
+
+install*.ps1
+copy*.ps1
