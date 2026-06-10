@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
+const inter = Inter({ subsets: ["latin"] });
+
 export const metadata: Metadata = {
-  title: "U-Shop",
-  description: "Technology Equipment Marketplace — Ghana",
+  title: "U-Shop | Campus Marketplace",
+  description: "The ultimate campus marketplace for buyers, sellers, and riders.",
 };
 
 export default function RootLayout({
@@ -17,6 +19,8 @@ export default function RootLayout({
       <body>
         {children}
         <Analytics />
+      <body className={`${inter.className} antialiased`}>
+        {children}
       </body>
     </html>
   );

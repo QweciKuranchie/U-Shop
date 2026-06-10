@@ -1,0 +1,38 @@
+name: Daily Integrity Check
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # Runs at 04:00 AM every day
+  workflow_dispatch: # Allows manual run
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run Integrity Check Script
+        run: npx tsx scripts/integrity-check.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_S3_PRODUCT_IMAGES_BUCKET: ${{ secrets.AWS_S3_PRODUCT_IMAGES_BUCKET }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
