@@ -209,3 +209,38 @@ Cloudflare acts as the DNS proxy, shielding Vercel from direct exposure.
 5. URL (or IP): `https://ushopgh.com/api/health`.
 6. Monitoring Interval: **Every 5 minutes**.
 7. Click **Create Monitor**.
+
+---
+
+## 6. GitHub Branch Protection Ruleset for `main`
+
+To prevent broken code or unapproved migrations from entering production, follow these steps to protect the `main` branch.
+
+### Step-by-Step Configuration on GitHub:
+
+1. Open your repository on GitHub.
+2. Click **Settings** (top tab navigation).
+3. In the left sidebar under *Code and automation*, click **Branches**.
+4. Click **Add branch ruleset** (or **Add rule** under Branch protection rules).
+5. **Ruleset Settings**:
+   - **Ruleset name:** `Main Branch Protection`
+   - **Enforcement status:** Set to **Active**
+   - **Bypass list:** *[Optional]* You can add admins if emergency bypasses are needed, but it is highly recommended to leave it blank to enforce policy.
+6. **Target branches**:
+   - Select **Add target** → **Include default branch** (which targets `main`).
+7. **Branch Rules (Select the following checkboxes):**
+   - **Require a pull request before merging:**
+     - Check **Require approvals** (Set *Minimum approvals before merging* to `1` or `2`).
+     - Check **Dismiss stale pull request approvals when new commits are pushed**.
+     - Check **Require review from Code Owners** (if utilizing a `CODEOWNERS` file).
+   - **Require status checks to pass before merging:**
+     - Check **Require branches to be up to date before merging** (forces branch sync before merge).
+     - Under *Status checks that must pass*, search for and add the following job from our PR validation pipeline:
+       - `validate`
+   - **Require conversation resolution before merging:** (Ensures all PR comment threads are resolved before code is merged).
+   - **Require signed commits:** (Recommended to verify commit identity).
+   - **Require linear history:** (Forces a squash-and-merge or rebase workflow, keeping the history clean).
+   - **Block force pushes:** (Prevents overwriting history on `main`).
+   - **Block deletions:** (Prevents deleting the `main` branch).
+8. Click **Create** or **Save changes** at the bottom of the page.
+
