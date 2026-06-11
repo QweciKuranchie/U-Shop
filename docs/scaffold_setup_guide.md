@@ -211,7 +211,8 @@ Cloudflare acts as the DNS proxy, shielding Vercel from direct exposure.
 7. Click **Create Monitor**.
 
 ---
-## GitHub Branch Protection Ruleset for `main`
+
+## 6. GitHub Branch Protection Ruleset for `main`
 
 To prevent broken code or unapproved migrations from entering production, follow these steps to protect the `main` branch.
 
@@ -224,7 +225,7 @@ To prevent broken code or unapproved migrations from entering production, follow
 5. **Ruleset Settings**:
    - **Ruleset name:** `Main Branch Protection`
    - **Enforcement status:** Set to **Active**
-   - Bypass list: *Optional* You can add admins if emergency bypasses are needed, but it is highly recommended to leave it blank to enforce policy.
+   - **Bypass list:** *Optional* You can add admins if emergency bypasses are needed, but it is highly recommended to leave it blank to enforce policy.
 6. **Target branches**:
    - Select **Add target** → **Include default branch** (which targets `main`).
 7. **Branch Rules (Select the following checkboxes):**
