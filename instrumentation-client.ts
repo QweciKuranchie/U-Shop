@@ -1,1 +1,22 @@
-// This file is deprecated. sentry.client.config.ts is the single source of truth for Sentry client-side configuration.
+import * as Sentry from "@sentry/nextjs";
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+
+  // Add optional integrations for additional features
+  integrations: [Sentry.replayIntegration()],
+
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: 1.0,
+
+  // Define how likely Replay events are sampled.
+  // This sets the sample rate to be 10%. You may want this to be 100% while
+  // in development and sample at a lower rate in production
+  replaysSessionSampleRate: 0.1,
+
+  // Define how likely Replay events are sampled when an error occurs.
+  replaysOnErrorSampleRate: 1.0,
+
+  // Explicitly set PII behavior using environment configuration
+  sendDefaultPii: process.env.NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII === "true",
+});

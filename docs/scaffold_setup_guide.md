@@ -99,7 +99,7 @@ We require two buckets: one public for product images and one completely blocked
         "AllowedOrigins": ["http://localhost:3000", "https://ushopgh.com", "https://*.ushopgh.com"],
         "ExposeHeaders": []
     }
-}
+]
 ```
 3. Click **Save changes**.
 
