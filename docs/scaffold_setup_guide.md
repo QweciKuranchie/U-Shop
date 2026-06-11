@@ -19,7 +19,7 @@ To stay within the free tier, we will provision a single `db.t2.micro` database 
 8. **Settings**:
    - DB instance identifier: `ushop-db`
    - Master username: `ushop_admin`
-   - Master password: *[Generate a strong password and save it]*
+   - Master password: *Generate a strong password and save it*
 9. **Instance configuration**:
    - DB instance class: `db.t2.micro` (or `db.t3.micro` depending on availability in your region)
 10. **Storage**:
@@ -211,8 +211,7 @@ Cloudflare acts as the DNS proxy, shielding Vercel from direct exposure.
 7. Click **Create Monitor**.
 
 ---
-
-## 6. GitHub Branch Protection Ruleset for `main`
+## GitHub Branch Protection Ruleset for `main`
 
 To prevent broken code or unapproved migrations from entering production, follow these steps to protect the `main` branch.
 
@@ -225,7 +224,7 @@ To prevent broken code or unapproved migrations from entering production, follow
 5. **Ruleset Settings**:
    - **Ruleset name:** `Main Branch Protection`
    - **Enforcement status:** Set to **Active**
-   - **Bypass list:** *[Optional]* You can add admins if emergency bypasses are needed, but it is highly recommended to leave it blank to enforce policy.
+   - Bypass list: *Optional* You can add admins if emergency bypasses are needed, but it is highly recommended to leave it blank to enforce policy.
 6. **Target branches**:
    - Select **Add target** → **Include default branch** (which targets `main`).
 7. **Branch Rules (Select the following checkboxes):**
@@ -244,3 +243,4 @@ To prevent broken code or unapproved migrations from entering production, follow
    - **Block deletions:** (Prevents deleting the `main` branch).
 8. Click **Create** or **Save changes** at the bottom of the page.
 
+---
