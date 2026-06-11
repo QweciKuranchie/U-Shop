@@ -40,9 +40,12 @@ To stay within the free tier, we will provision a single `db.t2.micro` database 
 ### Security Group Configuration (Strict Access Control)
 1. Go to the created security group `ushop-rds-sg` in the EC2 Console.
 2. Edit **Inbound Rules**:
-   - Rule 1: Type `PostgreSQL` (Port 5432), Source `My IP` (allows you to run migrations locally).
-   - Rule 2: Type `PostgreSQL` (Port 5432), Source `0.0.0.0/0` (only if you cannot configure VPC peering with Vercel; if deploying to Vercel, allow Vercel IPs or use Prisma Accelerate to proxy connections).
+   - Rule 1: Type `PostgreSQL` (Port 5432), Source `My IP` (allows you to run migrations locally from your development machine).
+   - Rule 2 (Accelerate Connection): Prisma Accelerate acts as a connection proxy. The database itself does not need public open ingress; only specific secure proxy IPs or a private tunnel/bastion/VPN path should be configured for pooled runtime access.
 3. Save rules.
+
+> [!CAUTION]
+> **Public-open RDS ingress (e.g., configuring `0.0.0.0/0`) is strictly prohibited** for U-Shop environments to prevent exposing the database to the public internet. All traffic must be restricted to tightly scoped source IPs (e.g., `My IP` for development) or routed securely through Prisma Accelerate proxy connections.
 
 ### Database URLs for `.env`:
 - **DIRECT_DATABASE_URL**: `postgresql://ushop_admin:[PASSWORD]@[RDS_ENDPOINT]:5432/ushop?schema=public`

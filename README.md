@@ -22,7 +22,7 @@ U-Shop is a campus marketplace platform that connects buyers, sellers, and deliv
 
 ### Prerequisites
 - Node.js 20+
-- pnpm 9 (recommended) or npm
+- pnpm 9
 
 ### Setup Instructions
 
