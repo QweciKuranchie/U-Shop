@@ -19,7 +19,7 @@ To stay within the free tier, we will provision a single `db.t2.micro` database 
 8. **Settings**:
    - DB instance identifier: `ushop-db`
    - Master username: `ushop_admin`
-   - Master password: *[Generate a strong password and save it]*
+   - Master password: *Generate a strong password and save it*
 9. **Instance configuration**:
    - DB instance class: `db.t2.micro` (or `db.t3.micro` depending on availability in your region)
 10. **Storage**:
@@ -40,9 +40,12 @@ To stay within the free tier, we will provision a single `db.t2.micro` database 
 ### Security Group Configuration (Strict Access Control)
 1. Go to the created security group `ushop-rds-sg` in the EC2 Console.
 2. Edit **Inbound Rules**:
-   - Rule 1: Type `PostgreSQL` (Port 5432), Source `My IP` (allows you to run migrations locally).
-   - Rule 2: Type `PostgreSQL` (Port 5432), Source `0.0.0.0/0` (only if you cannot configure VPC peering with Vercel; if deploying to Vercel, allow Vercel IPs or use Prisma Accelerate to proxy connections).
+   - Rule 1: Type `PostgreSQL` (Port 5432), Source `My IP` (allows you to run migrations locally from your development machine).
+   - Rule 2 (Accelerate Connection): Prisma Accelerate acts as a connection proxy. The database itself does not need public open ingress; only specific secure proxy IPs or a private tunnel/bastion/VPN path should be configured for pooled runtime access.
 3. Save rules.
+
+> [!CAUTION]
+> **Public-open RDS ingress (e.g., configuring `0.0.0.0/0`) is strictly prohibited** for U-Shop environments to prevent exposing the database to the public internet. All traffic must be restricted to tightly scoped source IPs (e.g., `My IP` for development) or routed securely through Prisma Accelerate proxy connections.
 
 ### Database URLs for `.env`:
 - **DIRECT_DATABASE_URL**: `postgresql://ushop_admin:[PASSWORD]@[RDS_ENDPOINT]:5432/ushop?schema=public`
@@ -96,7 +99,7 @@ We require two buckets: one public for product images and one completely blocked
         "AllowedOrigins": ["http://localhost:3000", "https://ushopgh.com", "https://*.ushopgh.com"],
         "ExposeHeaders": []
     }
-}
+]
 ```
 3. Click **Save changes**.
 
@@ -225,7 +228,7 @@ To prevent broken code or unapproved migrations from entering production, follow
 5. **Ruleset Settings**:
    - **Ruleset name:** `Main Branch Protection`
    - **Enforcement status:** Set to **Active**
-   - **Bypass list:** *[Optional]* You can add admins if emergency bypasses are needed, but it is highly recommended to leave it blank to enforce policy.
+   - **Bypass list:** *Optional* You can add admins if emergency bypasses are needed, but it is highly recommended to leave it blank to enforce policy.
 6. **Target branches**:
    - Select **Add target** → **Include default branch** (which targets `main`).
 7. **Branch Rules (Select the following checkboxes):**
@@ -244,3 +247,4 @@ To prevent broken code or unapproved migrations from entering production, follow
    - **Block deletions:** (Prevents deleting the `main` branch).
 8. Click **Create** or **Save changes** at the bottom of the page.
 
+---

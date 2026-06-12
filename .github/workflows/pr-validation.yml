@@ -24,12 +24,13 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Validate Prisma Schema
         run: pnpm prisma validate
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
+          DIRECT_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
 
       - name: Check TypeScript compilation
         run: pnpm tsc --noEmit
