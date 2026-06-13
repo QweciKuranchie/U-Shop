@@ -48,3 +48,6 @@ next-env.d.ts
 
 install*.ps1
 copy*.ps1
+
+# generated prisma client
+/generated/

@@ -1,16 +1,28 @@
-import { PrismaClient } from "@prisma/client";
+// lib/prisma.ts
+// Standard Prisma Client initialization with hot-reload safety
+
+import { PrismaClient } from "../generated/prisma";
 import { withAccelerate } from "@prisma/extension-accelerate";
 
-const prismaClientSingleton = () => {
-  return new PrismaClient().$extends(withAccelerate());
-};
+// Prevent multiple Prisma Client instances during Next.js hot reload in development
+declare global {
+  // eslint-disable-next-line no-var
+  var __prisma: ReturnType<typeof buildPrismaClient> | undefined;
+}
 
-declare const globalThis: {
-  prismaGlobal: ReturnType<typeof prismaClientSingleton>;
-} & typeof global;
+function buildPrismaClient() {
+  return new PrismaClient({
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "warn", "error"]
+        : ["warn", "error"],
+  }).$extends(withAccelerate());
+}
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+export const prisma = globalThis.__prisma ?? buildPrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.__prisma = prisma;
+}
 
 export default prisma;
-
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;

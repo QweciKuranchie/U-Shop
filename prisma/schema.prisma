@@ -1,14 +1,340 @@
+// prisma/schema.prisma
+// U-Shop Database Schema (SRD v1.1 Compliance)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+  output          = "../generated/prisma"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+// ── Enums ──────────────────────────────────────────────────────────
+
+enum SellerTier {
+  STUDENT
+  BUSINESS
+  INDIVIDUAL
 }
 
+enum SellerStatus {
+  PENDING_STUDENT
+  PENDING_BUSINESS
+  PENDING_INDIVIDUAL
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum ProductCategory {
+  PHONES
+  LAPTOPS
+  AUDIO
+  ACCESSORIES
+  COMPONENTS
+  CABLES
+  GAMING
+  OTHER
+}
+
+enum ProductCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+}
+
+enum ProductStatus {
+  ACTIVE
+  PAUSED
+  SOLD
+  DELETED
+}
+
+enum OrderStatus {
+  PENDING_COD
+  PAID
+  PROCESSING
+  READY_FOR_PICKUP
+  IN_TRANSIT
+  DELIVERED
+  COMPLETED
+  DISPUTED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  MOBILE_MONEY
+  CARD
+  CASH_ON_DELIVERY
+}
+
+enum CommissionStatus {
+  PENDING
+  CAPTURED
+  WAIVED
+}
+
+enum DeliveryFeeStatus {
+  PENDING
+  PAID_TO_RIDER
+  WAIVED
+}
+
+// ── Better Auth Models ───────────────────────────────────────────────
+
 model User {
-  id    String @id @default(uuid())
-  email String @unique
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  // Custom field — role-based access control
+  role          String   @default("buyer") // "admin" | "seller" | "buyer" | "rider"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+
+  // Application relations
+  sellerProfile SellerProfile?
+  buyerOrders   Order[]        @relation("BuyerOrders")
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?   // bcrypt hash (managed by Better Auth)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String    // email address
+  value      String    // OTP or verification token
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ── Application Models ────────────────────────────────────────────
+
+model SellerProfile {
+  id              String       @id @default(cuid())
+  userId          String       @unique
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  handle          String       @unique   // URL slug: /store/{handle}
+  storeName       String
+  bio             String?      @db.Text
+  tagline         String?
+  profilePhotoKey String?                // S3 key — ushop-product-images
+  coverImageKey   String?                // S3 key — ushop-product-images
+  whatsappNumber  String?                // Admin-only; NEVER in buyer-facing API
+  phone           String?                // Admin-only; NEVER in buyer-facing API
+  campus          String?
+  tier            SellerTier
+  status          SellerStatus @default(PENDING_STUDENT)
+  commissionRate  Decimal      @default(0.05) @db.Decimal(5, 4)
+  kycDocKeys      Json         @default("[]")  // String[] of S3 keys — private bucket
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  products Product[]
+
+  @@index([handle])
+  @@index([status])
+  @@index([campus])
+  @@map("seller_profiles")
+}
+
+model Product {
+  id             String           @id @default(cuid())
+  sellerId       String
+  seller         SellerProfile    @relation(fields: [sellerId], references: [id])
+  title          String
+  description    String           @db.Text
+  category       ProductCategory
+  condition      ProductCondition
+  // ── Currency fields: ALL Decimal(10,2) — NO floating point ──────
+  vendorPrice    Decimal          @db.Decimal(10, 2)
+  listingPrice   Decimal          @db.Decimal(10, 2)
+  commissionRate Decimal          @db.Decimal(5, 4)
+  imageS3Keys    Json             @default("[]")  // String[] — public bucket
+  status         ProductStatus    @default(ACTIVE)
+  deletedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  orders Order[]
+
+  @@index([status])
+  @@index([category])
+  @@index([sellerId])
+  @@map("products")
+}
+
+model Order {
+  id        String @id @default(cuid())
+  reference String @unique   // Format: USH-YYYYMMDD-XXXXXX
+
+  // ── Relationships ───────────────────────────────────────────────
+  buyerId   String
+  buyer     User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  productId String
+  product   Product       @relation(fields: [productId], references: [id])
+  riderId   String?
+  rider     Rider?        @relation(fields: [riderId], references: [id])
+
+  // ── Pricing snapshot (ALL Decimal — immutable after creation) ───
+  vendorPrice      Decimal @db.Decimal(10, 2)
+  commissionRate   Decimal @db.Decimal(5, 4)
+  listingPrice     Decimal @db.Decimal(10, 2)
+  deliveryFee      Decimal @default(0) @db.Decimal(10, 2)
+  checkoutPrice    Decimal @db.Decimal(10, 2)
+  paystackFee      Decimal @default(0) @db.Decimal(10, 2)
+  totalCharged     Decimal @db.Decimal(10, 2)
+  commissionAmount Decimal @db.Decimal(10, 2)
+  sellerReceivable Decimal @db.Decimal(10, 2)
+
+  // ── Payment ─────────────────────────────────────────────────────
+  paymentMethod     PaymentMethod
+  paystackReference String?        @unique
+
+  // ── State ───────────────────────────────────────────────────────
+  status            OrderStatus      @default(PAID)
+  commissionStatus  CommissionStatus @default(PENDING)
+  deliveryFeeStatus DeliveryFeeStatus @default(PENDING)
+
+  // ── OTP delivery verification ────────────────────────────────────
+  otpHash      String?   // bcrypt hash — raw OTP never stored
+  otpExpiresAt DateTime?
+  otpAttempts  Int       @default(0)
+
+  // ── Lifecycle timestamps ────────────────────────────────────────
+  paidAt        DateTime?
+  processedAt   DateTime?
+  readyAt       DateTime?
+  inTransitAt   DateTime?
+  deliveredAt   DateTime?
+  completedAt   DateTime?
+  disputedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  webhookEvents WebhookEvent[]
+  reviews       Review[]
+
+  @@index([status])
+  @@index([buyerId])
+  @@index([riderId])
+  @@index([paystackReference])
+  @@map("orders")
+}
+
+model Rider {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  name      String
+  phone     String                  // Shown to buyer during IN_TRANSIT only
+  zone      String                  // Campus/delivery zone(s)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@map("riders")
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  paystackRef String   @unique   // Idempotency key
+  event       String             // e.g. "charge.success"
+  processed   Boolean  @default(false)
+  orderId     String?
+  order       Order?   @relation(fields: [orderId], references: [id])
+  payload     Json
+  receivedAt  DateTime @default(now())
+
+  @@index([paystackRef])
+  @@map("webhook_events")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  buyerId   String
+  sellerId  String
+  rating    Int                    // 1–5
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@map("reviews")
+}
+
+model Institution {
+  id        String   @id @default(cuid())
+  name      String
+  domains   Json                   // String[] of accepted .edu.gh domains
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("institutions")
+}
+
+model KycAccessLog {
+  id          String   @id @default(cuid())
+  adminUserId String
+  s3ObjectKey String
+  accessedAt  DateTime @default(now())
+  ipAddress   String?
+
+  @@index([adminUserId])
+  @@map("kyc_access_logs")
 }
