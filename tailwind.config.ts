@@ -12,6 +12,11 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        brand: {
+          purple: "#5D1A89",
+          pink: "#D1148A",
+          red: "#FF0000",
+        },
         card: {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",
@@ -55,6 +60,10 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ["var(--font-inter)", "sans-serif"],
+        display: ["var(--font-outfit)", "sans-serif"],
       },
     },
   },

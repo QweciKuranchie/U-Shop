@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import * as Sentry from "@sentry/nextjs";
 
