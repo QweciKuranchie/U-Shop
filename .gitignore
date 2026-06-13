@@ -51,3 +51,4 @@ copy*.ps1
 
 # generated prisma client
 /generated/
+.prisma/
