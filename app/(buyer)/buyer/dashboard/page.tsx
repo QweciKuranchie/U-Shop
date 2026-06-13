@@ -478,7 +478,7 @@ export default function BuyerDashboard() {
                       <button
                         key={opt.type}
                         type="button"
-                        onClick={() => setPaymentMethod(opt.type as any)}
+                        onClick={() => setPaymentMethod(opt.type as "CARD" | "MOBILE_MONEY" | "CASH_ON_DELIVERY")}
                         className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
                           paymentMethod === opt.type
                             ? "bg-brand-pink/20 border-brand-pink text-white"

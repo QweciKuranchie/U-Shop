@@ -6,7 +6,6 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 
 // Prevent multiple Prisma Client instances during Next.js hot reload in development
 declare global {
-  // eslint-disable-next-line no-var
   var __prisma: ReturnType<typeof buildPrismaClient> | undefined;
 }
 

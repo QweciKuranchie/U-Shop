@@ -21,7 +21,7 @@ export async function requireRole(allowedRoles: string[]) {
   const session = await requireUser();
   // Better Auth sessions contain a user object.
   // We typecast role to any or check the database-backed custom field.
-  const userRole = (session.user as any).role || "buyer";
+  const userRole = (session.user as { role?: string }).role || "buyer";
   if (!allowedRoles.includes(userRole)) {
     redirect("/login?error=unauthorized");
   }
