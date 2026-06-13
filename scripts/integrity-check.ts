@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/prisma";
+import { prisma } from "../lib/prisma";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import * as Sentry from "@sentry/nextjs";
 
@@ -9,8 +9,6 @@ if (process.env.SENTRY_DSN) {
     tracesSampleRate: 1.0,
   });
 }
-
-const prisma = new PrismaClient();
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION || "af-south-1",
