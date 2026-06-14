@@ -11,6 +11,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import sharp from "sharp";
 import { randomUUID } from "crypto";
 import * as Sentry from "@sentry/nextjs";
+import { prisma } from "./prisma";
 
 // Robust AWS region parsing to support descriptive text in env
 let awsRegion = process.env.AWS_REGION || "us-east-1";
@@ -76,24 +77,59 @@ export async function uploadProductImage(
   return key;
 }
 
+function getContentTypeFromKey(key: string): string {
+  const extension = key.split(".").pop()?.toLowerCase();
+  switch (extension) {
+    case "pdf":
+      return "application/pdf";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    default:
+      return "application/octet-stream";
+  }
+}
+
 /**
  * Generate a 15-minute presigned GET URL for a private KYC document.
  * MUST only be called from admin-role-protected Route Handlers.
  * Every call MUST be logged to kyc_access_logs.
  */
-export async function generateKYCPresignedUrl(s3Key: string): Promise<string> {
+export async function generateKYCPresignedUrl(
+  s3Key: string,
+  adminUserId: string,
+  ipAddress?: string
+): Promise<string> {
+  // Audit log in kyc_access_logs
+  await prisma.kycAccessLog.create({
+    data: {
+      adminUserId,
+      s3ObjectKey: s3Key,
+      ipAddress: ipAddress || null,
+    },
+  });
+
+  const contentType = getContentTypeFromKey(s3Key);
+
   const command = new GetObjectCommand({
     Bucket: KYC_BUCKET,
     Key: s3Key,
     ResponseContentDisposition: "inline",
-    ResponseContentType: "image/jpeg",
+    ResponseContentType: contentType,
   });
+
   try {
     return await getSignedUrl(s3, command, { expiresIn: KYC_TTL_SECS });
   } catch (error) {
     Sentry.captureException(error, {
       tags: { service: "s3", operation: "generatePresignedUrl" },
-      extra: { s3Key },
+      extra: { s3Key, adminUserId, ipAddress },
     });
     throw error;
   }
