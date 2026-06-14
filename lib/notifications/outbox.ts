@@ -3,7 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { resend } from "@/lib/resend";
-import { EmailJobType } from "@prisma/client";
+import { EmailJobType } from "../../generated/prisma";
 import * as Sentry from "@sentry/nextjs";
 
 export const FROM_ADDRESS = "U-Shop <noreply@ushopgh.com>";
@@ -12,7 +12,7 @@ export interface EmailJobPayload {
   to: string;
   subject: string;
   jobType: EmailJobType;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }
 
 /**
@@ -24,7 +24,7 @@ export async function queueEmail(job: EmailJobPayload) {
       to: job.to,
       subject: job.subject,
       jobType: job.jobType,
-      payload: job.payload,
+      payload: job.payload as any, // json typecast
       status: "PENDING",
       attempts: 0,
     },
@@ -34,7 +34,7 @@ export async function queueEmail(job: EmailJobPayload) {
 /**
  * Render standard HTML placeholders for each job type to fulfill outbox dispatching.
  */
-function renderEmailBody(jobType: EmailJobType, payload: Record<string, any>): string {
+function renderEmailBody(jobType: EmailJobType, payload: Record<string, unknown>): string {
   switch (jobType) {
     case "SELLER_OTP":
       return `<p>Your seller verification OTP is: <strong>${payload.otp}</strong></p>`;
@@ -79,9 +79,9 @@ export async function processOutbox(): Promise<{ processed: number; failed: numb
   for (const job of jobs) {
     const nextAttempts = job.attempts + 1;
     try {
-      const html = renderEmailBody(job.jobType, job.payload as Record<string, any>);
+      const html = renderEmailBody(job.jobType, job.payload as Record<string, unknown>);
       
-      const { data, error } = await resend.emails.send({
+      const { error } = await resend.emails.send({
         from: FROM_ADDRESS,
         to: job.to,
         subject: job.subject,
@@ -103,7 +103,7 @@ export async function processOutbox(): Promise<{ processed: number; failed: numb
         },
       });
       processedCount++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       failedCount++;
       const errorMessage = err instanceof Error ? err.message : String(err);
       

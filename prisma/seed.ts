@@ -24,7 +24,7 @@ async function main() {
 
   // 2. Seed Institutions
   console.log("Seeding institutions...");
-  const ug = await prisma.institution.create({
+  await prisma.institution.create({
     data: {
       name: "University of Ghana",
       domains: ["ug.edu.gh", "st.ug.edu.gh"],
@@ -32,7 +32,7 @@ async function main() {
     },
   });
 
-  const knust = await prisma.institution.create({
+  await prisma.institution.create({
     data: {
       name: "Kwame Nkrumah University of Science and Technology",
       domains: ["knust.edu.gh", "st.knust.edu.gh"],
@@ -40,7 +40,7 @@ async function main() {
     },
   });
 
-  const gimpa = await prisma.institution.create({
+  await prisma.institution.create({
     data: {
       name: "Ghana Institute of Management and Public Administration",
       domains: ["gimpa.edu.gh"],
@@ -51,7 +51,7 @@ async function main() {
   // 3. Seed Users
   console.log("Seeding users...");
   // Admin
-  const adminUser = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: "Richard Nuhu",
       email: "admin@ushop.com",
@@ -158,13 +158,13 @@ async function main() {
   const zoneLegon = await prisma.deliveryZone.create({
     data: { name: "Legon", flatFee: new Prisma.Decimal("15.00"), isActive: true },
   });
-  const zoneTesano = await prisma.deliveryZone.create({
+  await prisma.deliveryZone.create({
     data: { name: "Tesano", flatFee: new Prisma.Decimal("20.00"), isActive: true },
   });
   const zoneEastLegon = await prisma.deliveryZone.create({
     data: { name: "East Legon", flatFee: new Prisma.Decimal("25.00"), isActive: true },
   });
-  const zoneMadina = await prisma.deliveryZone.create({
+  await prisma.deliveryZone.create({
     data: { name: "Madina", flatFee: new Prisma.Decimal("30.00"), isActive: true },
   });
 
@@ -263,7 +263,7 @@ async function main() {
     },
   });
 
-  const adapter = await prisma.product.create({
+  await prisma.product.create({
     data: {
       sellerId: sellerProfile2.id,
       title: "USB-C to HDMI Adapter 4K",

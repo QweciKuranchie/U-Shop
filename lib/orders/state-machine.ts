@@ -1,7 +1,7 @@
 // lib/orders/state-machine.ts
 // Compliance: U-Shop SRD v1.1 §6.2
 
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "../../generated/prisma";
 
 // Immutable transition map — source of truth for all state changes
 const VALID_TRANSITIONS: Readonly<Record<OrderStatus, readonly OrderStatus[]>> = {

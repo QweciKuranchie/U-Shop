@@ -3,7 +3,6 @@
 
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import * as Sentry from "@sentry/nextjs";
 
 /** Salt rounds for bcrypt — 10 provides ~100ms hash time on t3.micro */
 const BCRYPT_SALT_ROUNDS = 10;

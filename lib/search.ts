@@ -2,7 +2,7 @@
 // Compliance: U-Shop SRD v1.1 §3.4
 
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../generated/prisma";
 
 export interface SearchParams {
   query: string;
