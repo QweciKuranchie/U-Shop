@@ -28,7 +28,7 @@ async function main() {
   try {
     await prisma.$queryRaw`SELECT 1`;
     console.log("Database Connection: OK");
-  } catch (error: any) {
+  } catch (error) {
     console.error("Database Connection: FAILED");
     console.error(error);
     Sentry.captureException(error);
@@ -51,7 +51,7 @@ async function main() {
     console.log(`Found ${s3Keys.length} assets in S3 under 'products/'.`);
 
     // Fetch referenced image keys from database using type-safe client query
-    let dbImageKeys: string[] = [];
+    const dbImageKeys: string[] = [];
     const products = await prisma.product.findMany({
       select: {
         imageS3Keys: true,
@@ -85,7 +85,7 @@ async function main() {
     } else {
       console.log("Integrity Check: No orphaned S3 assets found.");
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("S3 Asset Verification: FAILED");
     console.error(error);
     Sentry.captureException(error);
