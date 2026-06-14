@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 export default function Home() {
   return (
@@ -11,14 +12,7 @@ export default function Home() {
 
       {/* Header */}
       <header className="flex justify-between items-center z-10 w-full max-w-7xl mx-auto">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-purple to-brand-pink flex items-center justify-center font-display font-black text-xl shadow-lg shadow-brand-purple/30">
-            U
-          </div>
-          <span className="font-display font-extrabold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-300">
-            U-<span className="text-brand-pink">Shop</span>
-          </span>
-        </div>
+        <Logo size="md" lightMode={false} />
         <div className="flex items-center space-x-4">
           <Link
             href="/login"

@@ -20,3 +20,5 @@ Sentry.init({
   // Explicitly set PII behavior using environment configuration
   sendDefaultPii: process.env.NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII === "true",
 });
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

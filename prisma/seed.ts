@@ -10,7 +10,10 @@ async function main() {
   await prisma.kycAccessLog.deleteMany();
   await prisma.review.deleteMany();
   await prisma.webhookEvent.deleteMany();
+  await prisma.emailOutbox.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.deliveryAddress.deleteMany();
+  await prisma.deliveryZone.deleteMany();
   await prisma.product.deleteMany();
   await prisma.sellerProfile.deleteMany();
   await prisma.rider.deleteMany();
@@ -21,7 +24,7 @@ async function main() {
 
   // 2. Seed Institutions
   console.log("Seeding institutions...");
-  const ug = await prisma.institution.create({
+  await prisma.institution.create({
     data: {
       name: "University of Ghana",
       domains: ["ug.edu.gh", "st.ug.edu.gh"],
@@ -29,10 +32,26 @@ async function main() {
     },
   });
 
-  const knust = await prisma.institution.create({
+  await prisma.institution.create({
     data: {
-      name: "Kwame Nkrumah University of Science and Technology",
-      domains: ["knust.edu.gh"],
+      name: "Ghana Communication Technology University",
+      domains: ["gctu.edu.gh"],
+      isActive: true,
+    },
+  });
+
+  await prisma.institution.create({
+    data: {
+      name: "University of Professional Studies, Accra",
+      domains: ["upsa.edu.gh"],
+      isActive: true,
+    },
+  });
+
+  await prisma.institution.create({
+    data: {
+      name: "Accra Technical University",
+      domains: ["atu.edu.gh"],
       isActive: true,
     },
   });
@@ -40,7 +59,7 @@ async function main() {
   // 3. Seed Users
   console.log("Seeding users...");
   // Admin
-  const adminUser = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: "Richard Nuhu",
       email: "admin@ushop.com",
@@ -134,11 +153,52 @@ async function main() {
       tagline: "Bytes, bits, and direct delivery",
       phone: "+233240000002",
       whatsappNumber: "+233240000002",
-      campus: "KNUST",
+      campus: "Ghana Communication Technology University",
       tier: "BUSINESS",
       status: "ACTIVE",
       commissionRate: new Prisma.Decimal("0.05"),
       kycDocKeys: ["kyc/business-reg-2.pdf"],
+    },
+  });
+
+  // 4b. Seed Delivery Zones
+  console.log("Seeding delivery zones...");
+  const zoneLegon = await prisma.deliveryZone.create({
+    data: { name: "Legon", flatFee: new Prisma.Decimal("15.00"), isActive: true },
+  });
+  await prisma.deliveryZone.create({
+    data: { name: "Tesano", flatFee: new Prisma.Decimal("20.00"), isActive: true },
+  });
+  const zoneEastLegon = await prisma.deliveryZone.create({
+    data: { name: "East Legon", flatFee: new Prisma.Decimal("25.00"), isActive: true },
+  });
+  await prisma.deliveryZone.create({
+    data: { name: "Madina", flatFee: new Prisma.Decimal("30.00"), isActive: true },
+  });
+
+  // 4c. Seed Delivery Addresses
+  console.log("Seeding delivery addresses...");
+  const buyer1Address = await prisma.deliveryAddress.create({
+    data: {
+      userId: buyer1User.id,
+      zoneId: zoneLegon.id,
+      type: "CAMPUS",
+      addressText: "Limann Hostel, Room 42",
+      landmark: "Near the main gate",
+      recipientPhone: "+233241110001",
+      isDefault: true,
+    },
+  });
+
+  const buyer2Address = await prisma.deliveryAddress.create({
+    data: {
+      userId: buyer2User.id,
+      zoneId: zoneEastLegon.id,
+      type: "HOME",
+      addressText: "Grateful Heart Villa, House 42",
+      landmark: "Opposite ECG Substation",
+      recipientPhone: "+233241110002",
+      isDefault: true,
     },
   });
 
@@ -159,7 +219,7 @@ async function main() {
       userId: rider2User.id,
       name: rider2User.name,
       phone: "+233245550002",
-      zone: "KNUST Campus & environs",
+      zone: "GCTU Campus & environs",
       isActive: true,
     },
   });
@@ -211,7 +271,7 @@ async function main() {
     },
   });
 
-  const adapter = await prisma.product.create({
+  await prisma.product.create({
     data: {
       sellerId: sellerProfile2.id,
       title: "USB-C to HDMI Adapter 4K",
@@ -235,6 +295,7 @@ async function main() {
       buyerId: buyer1User.id,
       productId: iphone.id,
       riderId: rider1.id,
+      deliveryAddressId: buyer1Address.id,
       vendorPrice: new Prisma.Decimal("3040.00"),
       commissionRate: new Prisma.Decimal("0.05"),
       listingPrice: new Prisma.Decimal("3200.00"),
@@ -265,13 +326,14 @@ async function main() {
       buyerId: buyer2User.id,
       productId: headphones.id,
       riderId: rider2.id,
+      deliveryAddressId: buyer2Address.id,
       vendorPrice: new Prisma.Decimal("1710.00"),
       commissionRate: new Prisma.Decimal("0.05"),
       listingPrice: new Prisma.Decimal("1800.00"),
-      deliveryFee: new Prisma.Decimal("20.00"),
-      checkoutPrice: new Prisma.Decimal("1820.00"),
-      paystackFee: new Prisma.Decimal("35.00"),
-      totalCharged: new Prisma.Decimal("1855.00"),
+      deliveryFee: new Prisma.Decimal("25.00"), // East Legon flat fee
+      checkoutPrice: new Prisma.Decimal("1825.00"), // 1800.00 + 25.00
+      paystackFee: new Prisma.Decimal("36.09"), // (1825.00 * 0.0195) + 0.50 = 36.0875 -> 36.09
+      totalCharged: new Prisma.Decimal("1861.09"), // 1825.00 + 36.09
       commissionAmount: new Prisma.Decimal("90.00"),
       sellerReceivable: new Prisma.Decimal("1710.00"),
       paymentMethod: "CARD",
@@ -293,13 +355,14 @@ async function main() {
       buyerId: buyer1User.id,
       productId: laptop.id,
       riderId: rider1.id,
+      deliveryAddressId: buyer1Address.id,
       vendorPrice: new Prisma.Decimal("4275.00"),
       commissionRate: new Prisma.Decimal("0.05"),
       listingPrice: new Prisma.Decimal("4500.00"),
-      deliveryFee: new Prisma.Decimal("25.00"),
-      checkoutPrice: new Prisma.Decimal("4525.00"),
+      deliveryFee: new Prisma.Decimal("15.00"), // Legon flat fee
+      checkoutPrice: new Prisma.Decimal("4515.00"), // 4500.00 + 15.00
       paystackFee: new Prisma.Decimal("0.00"), // Cash on delivery
-      totalCharged: new Prisma.Decimal("4525.00"),
+      totalCharged: new Prisma.Decimal("4515.00"),
       commissionAmount: new Prisma.Decimal("225.00"),
       sellerReceivable: new Prisma.Decimal("4275.00"),
       paymentMethod: "CASH_ON_DELIVERY",
