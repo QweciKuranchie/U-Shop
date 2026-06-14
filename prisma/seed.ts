@@ -10,7 +10,10 @@ async function main() {
   await prisma.kycAccessLog.deleteMany();
   await prisma.review.deleteMany();
   await prisma.webhookEvent.deleteMany();
+  await prisma.emailOutbox.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.deliveryAddress.deleteMany();
+  await prisma.deliveryZone.deleteMany();
   await prisma.product.deleteMany();
   await prisma.sellerProfile.deleteMany();
   await prisma.rider.deleteMany();
@@ -32,7 +35,15 @@ async function main() {
   const knust = await prisma.institution.create({
     data: {
       name: "Kwame Nkrumah University of Science and Technology",
-      domains: ["knust.edu.gh"],
+      domains: ["knust.edu.gh", "st.knust.edu.gh"],
+      isActive: true,
+    },
+  });
+
+  const gimpa = await prisma.institution.create({
+    data: {
+      name: "Ghana Institute of Management and Public Administration",
+      domains: ["gimpa.edu.gh"],
       isActive: true,
     },
   });
@@ -142,6 +153,47 @@ async function main() {
     },
   });
 
+  // 4b. Seed Delivery Zones
+  console.log("Seeding delivery zones...");
+  const zoneLegon = await prisma.deliveryZone.create({
+    data: { name: "Legon", flatFee: new Prisma.Decimal("15.00"), isActive: true },
+  });
+  const zoneTesano = await prisma.deliveryZone.create({
+    data: { name: "Tesano", flatFee: new Prisma.Decimal("20.00"), isActive: true },
+  });
+  const zoneEastLegon = await prisma.deliveryZone.create({
+    data: { name: "East Legon", flatFee: new Prisma.Decimal("25.00"), isActive: true },
+  });
+  const zoneMadina = await prisma.deliveryZone.create({
+    data: { name: "Madina", flatFee: new Prisma.Decimal("30.00"), isActive: true },
+  });
+
+  // 4c. Seed Delivery Addresses
+  console.log("Seeding delivery addresses...");
+  const buyer1Address = await prisma.deliveryAddress.create({
+    data: {
+      userId: buyer1User.id,
+      zoneId: zoneLegon.id,
+      type: "CAMPUS",
+      addressText: "Limann Hostel, Room 42",
+      landmark: "Near the main gate",
+      recipientPhone: "+233241110001",
+      isDefault: true,
+    },
+  });
+
+  const buyer2Address = await prisma.deliveryAddress.create({
+    data: {
+      userId: buyer2User.id,
+      zoneId: zoneEastLegon.id,
+      type: "HOME",
+      addressText: "Grateful Heart Villa, House 42",
+      landmark: "Opposite ECG Substation",
+      recipientPhone: "+233241110002",
+      isDefault: true,
+    },
+  });
+
   // 5. Seed Riders
   console.log("Seeding riders...");
   const rider1 = await prisma.rider.create({
@@ -235,6 +287,7 @@ async function main() {
       buyerId: buyer1User.id,
       productId: iphone.id,
       riderId: rider1.id,
+      deliveryAddressId: buyer1Address.id,
       vendorPrice: new Prisma.Decimal("3040.00"),
       commissionRate: new Prisma.Decimal("0.05"),
       listingPrice: new Prisma.Decimal("3200.00"),
@@ -265,13 +318,14 @@ async function main() {
       buyerId: buyer2User.id,
       productId: headphones.id,
       riderId: rider2.id,
+      deliveryAddressId: buyer2Address.id,
       vendorPrice: new Prisma.Decimal("1710.00"),
       commissionRate: new Prisma.Decimal("0.05"),
       listingPrice: new Prisma.Decimal("1800.00"),
-      deliveryFee: new Prisma.Decimal("20.00"),
-      checkoutPrice: new Prisma.Decimal("1820.00"),
-      paystackFee: new Prisma.Decimal("35.00"),
-      totalCharged: new Prisma.Decimal("1855.00"),
+      deliveryFee: new Prisma.Decimal("25.00"), // East Legon flat fee
+      checkoutPrice: new Prisma.Decimal("1825.00"), // 1800.00 + 25.00
+      paystackFee: new Prisma.Decimal("36.09"), // (1825.00 * 0.0195) + 0.50 = 36.0875 -> 36.09
+      totalCharged: new Prisma.Decimal("1861.09"), // 1825.00 + 36.09
       commissionAmount: new Prisma.Decimal("90.00"),
       sellerReceivable: new Prisma.Decimal("1710.00"),
       paymentMethod: "CARD",
@@ -293,13 +347,14 @@ async function main() {
       buyerId: buyer1User.id,
       productId: laptop.id,
       riderId: rider1.id,
+      deliveryAddressId: buyer1Address.id,
       vendorPrice: new Prisma.Decimal("4275.00"),
       commissionRate: new Prisma.Decimal("0.05"),
       listingPrice: new Prisma.Decimal("4500.00"),
-      deliveryFee: new Prisma.Decimal("25.00"),
-      checkoutPrice: new Prisma.Decimal("4525.00"),
+      deliveryFee: new Prisma.Decimal("15.00"), // Legon flat fee
+      checkoutPrice: new Prisma.Decimal("4515.00"), // 4500.00 + 15.00
       paystackFee: new Prisma.Decimal("0.00"), // Cash on delivery
-      totalCharged: new Prisma.Decimal("4525.00"),
+      totalCharged: new Prisma.Decimal("4515.00"),
       commissionAmount: new Prisma.Decimal("225.00"),
       sellerReceivable: new Prisma.Decimal("4275.00"),
       paymentMethod: "CASH_ON_DELIVERY",

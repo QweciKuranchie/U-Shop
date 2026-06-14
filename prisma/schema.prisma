@@ -8,7 +8,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // ── Enums ──────────────────────────────────────────────────────────
@@ -83,6 +85,23 @@ enum DeliveryFeeStatus {
   WAIVED
 }
 
+enum AddressType {
+  CAMPUS
+  HOME
+}
+
+enum EmailJobType {
+  SELLER_OTP            @map("seller-otp")
+  SELLER_APPROVED       @map("seller-approved")
+  SELLER_REJECTED       @map("seller-rejected")
+  NEW_ORDER_SELLER      @map("new-order-seller")
+  ORDER_CONFIRMED_BUYER @map("order-confirmed-buyer")
+  DELIVERY_OTP_BUYER   @map("delivery-otp-buyer")
+  ORDER_DELIVERED       @map("order-delivered")
+  PAYOUT_SENT           @map("payout-sent")
+  REFUND_STARTED        @map("refund-started")
+}
+
 // ── Better Auth Models ───────────────────────────────────────────────
 
 model User {
@@ -100,8 +119,9 @@ model User {
   accounts      Account[]
 
   // Application relations
-  sellerProfile SellerProfile?
-  buyerOrders   Order[]        @relation("BuyerOrders")
+  sellerProfile     SellerProfile?
+  buyerOrders       Order[]           @relation("BuyerOrders")
+  deliveryAddresses DeliveryAddress[]
 
   @@index([email])
   @@index([role])
@@ -221,10 +241,12 @@ model Order {
   // ── Relationships ───────────────────────────────────────────────
   buyerId   String
   buyer     User          @relation("BuyerOrders", fields: [buyerId], references: [id])
-  productId String
-  product   Product       @relation(fields: [productId], references: [id])
-  riderId   String?
-  rider     Rider?        @relation(fields: [riderId], references: [id])
+  productId         String
+  product           Product          @relation(fields: [productId], references: [id])
+  riderId           String?
+  rider             Rider?           @relation(fields: [riderId], references: [id])
+  deliveryAddressId String?
+  deliveryAddress   DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
 
   // ── Pricing snapshot (ALL Decimal — immutable after creation) ───
   vendorPrice      Decimal @db.Decimal(10, 2)
@@ -335,4 +357,54 @@ model KycAccessLog {
 
   @@index([adminUserId])
   @@map("kyc_access_logs")
+}
+
+model DeliveryZone {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  flatFee   Decimal  @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveryAddresses DeliveryAddress[]
+
+  @@map("delivery_zones")
+}
+
+model DeliveryAddress {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  zoneId         String
+  zone           DeliveryZone @relation(fields: [zoneId], references: [id])
+  type           AddressType
+  addressText    String
+  landmark       String?
+  recipientPhone String
+  isDefault      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  orders Order[]
+
+  @@index([userId])
+  @@index([zoneId])
+  @@map("delivery_addresses")
+}
+
+model EmailOutbox {
+  id          String       @id @default(cuid())
+  to          String
+  subject     String
+  jobType     EmailJobType
+  payload     Json
+  status      String       @default("PENDING") // PENDING, SENT, FAILED
+  attempts    Int          @default(0)
+  lastError   String?      @db.Text
+  createdAt   DateTime     @default(now())
+  processedAt DateTime?
+
+  @@index([status])
+  @@map("email_outbox")
 }
