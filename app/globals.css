@@ -2,82 +2,169 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
+/* ── U-Shop Design System v1.0 ────────────────────────────────── */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71.4% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
-    --primary: 276 68% 32%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220.9 39.3% 11%;
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --accent: 322 83% 45%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 276 68% 32%;
-    --radius: 0.5rem;
+    /* ── Backgrounds ──────────────────────────────────── */
+    --background:             210 40% 98%;   /* slate-50  #F8FAFC */
+    --foreground:             222 47% 11%;   /* slate-900 #0F172A */
+
+    /* ── Card ─────────────────────────────────────────── */
+    --card:                   0 0% 100%;     /* white */
+    --card-foreground:        222 47% 11%;   /* slate-900 */
+
+    /* ── Popover ──────────────────────────────────────── */
+    --popover:                0 0% 100%;
+    --popover-foreground:     222 47% 11%;
+
+    /* ── Primary — Deep Purple #5D1A89 ────────────────── */
+    --primary:                276 68% 32%;
+    --primary-foreground:     0 0% 100%;     /* white text on purple */
+
+    /* ── Secondary — Magenta #D1148A ──────────────────── */
+    --secondary:              323 83% 45%;
+    --secondary-foreground:   0 0% 100%;     /* white text on magenta */
+
+    /* ── Muted ────────────────────────────────────────── */
+    --muted:                  210 40% 96%;   /* slate-100 */
+    --muted-foreground:       215 16% 47%;   /* slate-500 */
+
+    /* ── Accent (Magenta, lighter context) ────────────── */
+    --accent:                 323 83% 97%;   /* magenta-50 #FDF0F8 */
+    --accent-foreground:      323 83% 35%;   /* dark magenta text */
+
+    /* ── Destructive — Error Red ──────────────────────── */
+    --destructive:            0 72% 51%;     /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* ── Border & Input ───────────────────────────────── */
+    --border:                 214 32% 91%;   /* slate-200 */
+    --input:                  214 32% 91%;   /* slate-200 */
+
+    /* ── Ring (focus indicator) ── Deep Purple ────────── */
+    --ring:                   276 68% 32%;   /* #5D1A89 */
+
+    /* ── Border Radius ────────────────────────────────── */
+    --radius:                 0.75rem;       /* 12px — rounded-xl */
+
+    /* ── Chart Colors ─────────────────────────────────── */
+    --chart-1:                276 68% 32%;   /* purple */
+    --chart-2:                323 83% 45%;   /* magenta */
+    --chart-3:                142 76% 36%;   /* green/success */
+    --chart-4:                32 95% 44%;    /* amber/warning */
+    --chart-5:                0 72% 51%;     /* red/error */
+
+    /* ── Brand Custom Triplet ─────────────────────────── */
+    --brand-red:              0 100% 50%;    /* #FF0000 */
+    --brand-purple:           276 68% 32%;   /* #5D1A89 */
+    --brand-magenta:          323 83% 45%;   /* #D1148A */
+
+    /* ── Semantic States ──────────────────────────────── */
+    --color-success:          142 76% 36%;   /* #16A34A */
+    --color-success-subtle:   142 76% 93%;
+    --color-warning:          32 95% 44%;    /* #D97706 */
+    --color-warning-subtle:   32 95% 92%;
+    --color-error:            0 72% 51%;     /* #DC2626 */
+    --color-error-subtle:     0 72% 95%;
+    --color-info:             221 83% 53%;   /* #2563EB */
+    --color-info-subtle:      221 83% 95%;
+
+    /* ── Fonts ────────────────────────────────────────── */
+    --font-sans:              "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-mono:              "JetBrains Mono", ui-monospace, monospace;
   }
 
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 276 70% 50%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 322 85% 60%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 276 70% 50%;
+    /* ── Backgrounds ──────────────────────────────────── */
+    --background:             222 47% 7%;    /* near-black with purple tint */
+    --foreground:             210 40% 98%;   /* near-white */
+
+    --card:                   222 47% 10%;
+    --card-foreground:        210 40% 98%;
+
+    --popover:                222 47% 10%;
+    --popover-foreground:     210 40% 98%;
+
+    --primary:                276 58% 65%;   /* lighter purple for dark bg */
+    --primary-foreground:     222 47% 7%;    /* dark text on light purple */
+
+    --secondary:              323 70% 65%;   /* lighter magenta */
+    --secondary-foreground:   222 47% 7%;
+
+    --muted:                  215 25% 18%;
+    --muted-foreground:       215 20% 65%;
+
+    --accent:                 276 40% 18%;   /* dark purple tint */
+    --accent-foreground:      276 58% 80%;
+
+    --destructive:            0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border:                 215 25% 18%;
+    --input:                  215 25% 18%;
+
+    --ring:                   276 58% 65%;
   }
 }
 
+/* ── Base Resets & Defaults ───────────────────────────────────── */
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Smooth focus transitions — all interactive elements */
+  button, input, select, textarea, a {
+    @apply transition-shadow duration-150;
+  }
+
+  /* Tabular numerals on price elements */
+  [data-price], .price, .tabular-nums {
+    font-feature-settings: "tnum" !important;
+  }
+}
+
+/* ── Safe Area Utilities ──────────────────────────────────────── */
+@layer utilities {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top:    env(safe-area-inset-top); }
+  .pl-safe { padding-left:   env(safe-area-inset-left); }
+  .pr-safe { padding-right:  env(safe-area-inset-right); }
+}
+
+/* ── Skeleton Loader Animation ───────────────────────────────── */
+@layer utilities {
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200 rounded;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent 25%,
+      rgba(255, 255, 255, 0.5) 50%,
+      transparent 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+}
+
+/* ── Reduced Motion Fallbacks ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

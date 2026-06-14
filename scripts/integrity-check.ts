@@ -50,28 +50,25 @@ async function main() {
 
     console.log(`Found ${s3Keys.length} assets in S3 under 'products/'.`);
 
-    // In T1, we don't have Product model fully set up yet.
-    // We will do a safe check if Product table exists and has records.
+    // Fetch referenced image keys from database using type-safe client query
     let dbImageKeys: string[] = [];
-    try {
-      const products = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT "imageS3Keys" FROM "Product"`
-      );
-      for (const product of products) {
-        if (product.imageS3Keys) {
-          const keys = typeof product.imageS3Keys === "string" 
-            ? JSON.parse(product.imageS3Keys) 
-            : product.imageS3Keys;
-          if (Array.isArray(keys)) {
-            dbImageKeys.push(...keys);
-          }
+    const products = await prisma.product.findMany({
+      select: {
+        imageS3Keys: true,
+      },
+    });
+
+    for (const product of products) {
+      if (product.imageS3Keys) {
+        const keys = typeof product.imageS3Keys === "string" 
+          ? JSON.parse(product.imageS3Keys) 
+          : product.imageS3Keys;
+        if (Array.isArray(keys)) {
+          dbImageKeys.push(...keys);
         }
       }
-      console.log(`Found ${dbImageKeys.length} image keys referenced in database.`);
-    } catch (dbError: any) {
-      console.log("Product table not found or empty (skipping DB-side comparisons for T1 scaffold).");
-      // If the product table is not available yet, we assume 0 keys in DB
     }
+    console.log(`Found ${dbImageKeys.length} image keys referenced in database.`);
 
     // Find orphaned S3 assets (exist in S3, but NOT in DB)
     const orphanedKeys = s3Keys.filter((key) => !dbImageKeys.includes(key));
