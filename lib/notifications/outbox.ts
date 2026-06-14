@@ -3,7 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { resend } from "@/lib/resend";
-import { EmailJobType } from "../../generated/prisma";
+import { EmailJobType, Prisma } from "../../generated/prisma";
 import * as Sentry from "@sentry/nextjs";
 
 export const FROM_ADDRESS = "U-Shop <noreply@ushopgh.com>";
@@ -24,7 +24,7 @@ export async function queueEmail(job: EmailJobPayload) {
       to: job.to,
       subject: job.subject,
       jobType: job.jobType,
-      payload: job.payload as any, // json typecast
+      payload: job.payload as Prisma.InputJsonValue, // json typecast
       status: "PENDING",
       attempts: 0,
     },
