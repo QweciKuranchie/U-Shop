@@ -11,6 +11,7 @@ export interface SearchParams {
   minPrice?: number;
   maxPrice?: number;
   campus?: string;
+  sellerTier?: string;
   page?: number;
   pageSize?: number;
 }
@@ -23,6 +24,7 @@ export async function searchProducts(params: SearchParams) {
     minPrice,
     maxPrice,
     campus,
+    sellerTier,
     page = 1,
     pageSize = 20,
   } = params;
@@ -50,6 +52,7 @@ export async function searchProducts(params: SearchParams) {
       ${minPrice ? Prisma.sql`AND p."listingPrice" >= ${minPrice}` : Prisma.empty}
       ${maxPrice ? Prisma.sql`AND p."listingPrice" <= ${maxPrice}` : Prisma.empty}
       ${campus ? Prisma.sql`AND sp.campus = ${campus}` : Prisma.empty}
+      ${sellerTier ? Prisma.sql`AND sp.tier = ${sellerTier}::"SellerTier"` : Prisma.empty}
     ORDER BY rank DESC
     LIMIT ${pageSize} OFFSET ${offset}
   `;
@@ -58,7 +61,7 @@ export async function searchProducts(params: SearchParams) {
   const ids = results.map((r) => r.id);
   if (ids.length === 0) return [];
 
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: { id: { in: ids } },
     include: {
       seller: {
@@ -70,6 +73,13 @@ export async function searchProducts(params: SearchParams) {
         },
       },
     },
-    orderBy: { createdAt: "desc" },
   });
+
+  // Map products by ID for O(1) retrieval
+  const productsMap = new Map(products.map((p) => [p.id, p]));
+
+  // Preserve database search relevance rank order instead of re-sorting by creation time
+  return ids
+    .map((id) => productsMap.get(id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined);
 }

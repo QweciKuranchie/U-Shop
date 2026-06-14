@@ -34,16 +34,24 @@ async function main() {
 
   await prisma.institution.create({
     data: {
-      name: "Kwame Nkrumah University of Science and Technology",
-      domains: ["knust.edu.gh", "st.knust.edu.gh"],
+      name: "Ghana Communication Technology University",
+      domains: ["gctu.edu.gh"],
       isActive: true,
     },
   });
 
   await prisma.institution.create({
     data: {
-      name: "Ghana Institute of Management and Public Administration",
-      domains: ["gimpa.edu.gh"],
+      name: "University of Professional Studies, Accra",
+      domains: ["upsa.edu.gh"],
+      isActive: true,
+    },
+  });
+
+  await prisma.institution.create({
+    data: {
+      name: "Accra Technical University",
+      domains: ["atu.edu.gh"],
       isActive: true,
     },
   });
@@ -145,7 +153,7 @@ async function main() {
       tagline: "Bytes, bits, and direct delivery",
       phone: "+233240000002",
       whatsappNumber: "+233240000002",
-      campus: "KNUST",
+      campus: "Ghana Communication Technology University",
       tier: "BUSINESS",
       status: "ACTIVE",
       commissionRate: new Prisma.Decimal("0.05"),
@@ -211,7 +219,7 @@ async function main() {
       userId: rider2User.id,
       name: rider2User.name,
       phone: "+233245550002",
-      zone: "KNUST Campus & environs",
+      zone: "GCTU Campus & environs",
       isActive: true,
     },
   });

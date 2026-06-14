@@ -244,7 +244,7 @@ model Order {
   riderId           String?
   rider             Rider?           @relation(fields: [riderId], references: [id])
   deliveryAddressId String?
-  deliveryAddress   DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
+  deliveryAddress   DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id], onDelete: Restrict)
 
   // ── Pricing snapshot (ALL Decimal — immutable after creation) ───
   vendorPrice      Decimal @db.Decimal(10, 2)
