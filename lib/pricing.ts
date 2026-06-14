@@ -1,7 +1,7 @@
 // lib/pricing.ts
 // Compliance: U-Shop SRD v1.1 §8.1
 
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../generated/prisma";
 
 export interface PricingInput {
   vendorPrice: Prisma.Decimal;
