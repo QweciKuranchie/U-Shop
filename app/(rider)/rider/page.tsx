@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 interface DeliveryJob {
   id: string;
@@ -131,13 +132,8 @@ export default function RiderDashboard() {
       {/* Nav */}
       <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-white/5 py-4 px-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-purple to-brand-pink flex items-center justify-center font-display font-black text-lg shadow-lg shadow-brand-purple/20">
-              U
-            </div>
-            <span className="font-display font-black text-xl tracking-tight">
-              U-<span className="text-brand-pink">Shop</span>
-            </span>
+          <Link href="/" className="flex items-center group">
+            <Logo size="md" lightMode={false} />
           </Link>
 
           <div className="flex items-center space-x-4">

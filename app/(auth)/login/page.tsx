@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Logo from "@/components/Logo";
 
 function LoginContent() {
   const router = useRouter();
@@ -103,12 +104,7 @@ function LoginContent() {
       <div className="w-full max-w-md z-10">
         {/* Brand Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-purple to-brand-pink flex items-center justify-center font-display font-black text-2xl shadow-xl shadow-brand-purple/30 mb-3">
-            U
-          </div>
-          <h1 className="font-display font-black text-3xl tracking-tight">
-            U-<span className="text-brand-pink">Shop</span>
-          </h1>
+          <Logo size="lg" lightMode={false} className="mb-3" />
           <p className="text-slate-400 text-sm mt-1">Campus Marketplace System</p>
         </div>
 
