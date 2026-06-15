@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Logo from "@/components/Logo";
+import { authClient } from "@/lib/auth-client";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Tabs: "buyer" | "seller" | "rider" | "admin"
   const [activeTab, setActiveTab] = useState<"buyer" | "seller" | "rider" | "admin">("buyer");
   const [email, setEmail] = useState("");
@@ -16,40 +18,83 @@ function LoginContent() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
+    // Check if logout was passed
+    const logout = searchParams.get("logout");
+    if (logout === "true") {
+      authClient.signOut().then(() => {
+        router.replace("/login");
+      });
+      return;
+    }
+
     // Read optional error search param (e.g. unauthorized redirect)
     const error = searchParams.get("error");
     if (error === "unauthorized") {
       setErrorMsg("You do not have permission to access that section. Please log in with the correct role.");
+    } else if (error === "email-not-verified") {
+      setErrorMsg("Your email address is not verified. Please check your inbox for the verification link.");
     }
-    
+
     // Check if redirect tab was passed
     const tabParam = searchParams.get("tab");
     if (tabParam === "seller") setActiveTab("seller");
     else if (tabParam === "rider") setActiveTab("rider");
     else if (tabParam === "admin") setActiveTab("admin");
-  }, [searchParams]);
+  }, [searchParams, router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg("");
 
-    setTimeout(() => {
-      // 1. Write mock cookie for middleware validation
-      document.cookie = "better-auth.session_token=mock-session-token; path=/; max-age=3600";
-      
-      // 2. Redirect to corresponding dashboard
-      setIsLoading(false);
-      if (activeTab === "buyer") {
-        router.push("/buyer/dashboard");
-      } else if (activeTab === "seller") {
-        router.push("/seller/dashboard");
-      } else if (activeTab === "rider") {
-        router.push("/rider");
-      } else if (activeTab === "admin") {
-        router.push("/admin/dashboard");
+    try {
+      const { data, error } = await authClient.signIn.email({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.code === "EMAIL_NOT_VERIFIED") {
+          setErrorMsg("Your email address is not verified. Please check your inbox for the verification link.");
+        } else {
+          setErrorMsg(error.message || "Invalid credentials. Please try again.");
+        }
+        setIsLoading(false);
+        return;
       }
-    }, 800);
+
+      const role = data?.user?.role;
+      const callbackUrl = searchParams.get("callbackUrl");
+
+      setIsLoading(false);
+
+      if (callbackUrl) {
+        // Check if callbackUrl matches the role.
+        if (callbackUrl.startsWith("/admin") && role !== "admin") {
+          router.push("/unauthorized");
+        } else if (callbackUrl.startsWith("/seller") && role !== "seller") {
+          router.push("/unauthorized");
+        } else if (callbackUrl.startsWith("/rider") && role !== "rider") {
+          router.push("/unauthorized");
+        } else {
+          router.push(callbackUrl);
+        }
+      } else {
+        // Default redirect based on actual role
+        if (role === "admin") {
+          router.push("/admin/dashboard");
+        } else if (role === "seller") {
+          router.push("/seller/dashboard");
+        } else if (role === "rider") {
+          router.push("/rider");
+        } else {
+          router.push("/buyer/dashboard");
+        }
+      }
+    } catch (err: any) {
+      setErrorMsg("An unexpected error occurred. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   // Accent styling based on selected role
@@ -97,7 +142,7 @@ function LoginContent() {
       {/* Background Ambient Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-brand-purple/10 blur-[130px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-brand-pink/10 blur-[130px] pointer-events-none" />
-      
+
       {/* Glow highlight reflecting active tab */}
       <div className={`absolute top-[40%] left-[40%] w-[30%] h-[30%] rounded-full ${theme.glow} blur-[120px] transition-all duration-500 pointer-events-none`} />
 
@@ -110,7 +155,7 @@ function LoginContent() {
 
         {/* Login Container (Glassmorphic) */}
         <div className={`w-full bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-3xl p-8 shadow-2xl transition-all duration-300 ${theme.shadow}`}>
-          
+
           {/* Tab Selector */}
           <div className="grid grid-cols-4 gap-1 p-1 bg-slate-950/80 rounded-2xl mb-6 border border-white/5">
             {(["buyer", "seller", "rider", "admin"] as const).map((role) => (
@@ -199,9 +244,9 @@ function LoginContent() {
             <div className="text-center mt-6 pt-6 border-t border-white/5">
               <span className="text-xs text-slate-400 font-light">
                 Don&apos;t have an account?{" "}
-                <a href="#" className={`font-semibold ${theme.textColor} hover:underline`}>
+                <Link href="/register" className={`font-semibold ${theme.textColor} hover:underline`}>
                   Create store/register
-                </a>
+                </Link>
               </span>
             </div>
           )}
