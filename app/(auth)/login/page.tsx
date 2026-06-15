@@ -63,7 +63,7 @@ function LoginContent() {
         return;
       }
 
-      const role = data?.user?.role;
+      const role = (data?.user as { role?: string } | undefined)?.role;
       const callbackUrl = searchParams.get("callbackUrl");
 
       setIsLoading(false);
@@ -91,7 +91,7 @@ function LoginContent() {
           router.push("/buyer/dashboard");
         }
       }
-    } catch (err: any) {
+    } catch {
       setErrorMsg("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }

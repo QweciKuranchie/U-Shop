@@ -26,7 +26,8 @@ export async function requireRole(
     throw new AuthError("UNAUTHENTICATED", 401);
   }
   
-  if (!roles.includes(session.user.role)) {
+  const userRole = (session.user as { role?: string | null }).role;
+  if (!userRole || !roles.includes(userRole)) {
     throw new AuthError("FORBIDDEN", 403);
   }
   

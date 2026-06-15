@@ -19,7 +19,7 @@ export default function RegisterPage() {
     setErrorMsg("");
 
     try {
-      const { data, error } = await authClient.signUp.email({
+      const { error } = await authClient.signUp.email({
         email,
         password,
         name,
@@ -33,7 +33,7 @@ export default function RegisterPage() {
 
       setIsLoading(false);
       setSuccess(true);
-    } catch (err: any) {
+    } catch {
       setErrorMsg("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
