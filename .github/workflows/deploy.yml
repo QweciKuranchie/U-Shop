@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
 
-     permissions:
+permissions:
   contents: read
   deployments: write
 
@@ -82,7 +82,7 @@ jobs:
           fi
           echo "Smoke test passed with status $STATUS_CODE"
 
-          - name: Deploy to Prisma Compute
+      - name: Deploy to Prisma Compute
         uses: prisma/project-compute/github-action@main
         with:
           api-token: ${{ secrets.PRISMA_API_TOKEN }}
