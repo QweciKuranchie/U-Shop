@@ -3,6 +3,9 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import { prisma } from "@/lib/prisma";
 
+// Prevent static prerendering — homepage fetches live product data
+export const dynamic = "force-dynamic";
+
 // ── Fetch featured products from DB ───────────────────────────────
 async function getFeaturedProducts() {
   const products = await prisma.product.findMany({
