@@ -69,12 +69,10 @@ export default function SellerRegisterPage() {
   // KYC
   const [kycFiles, setKycFiles] = useState<File[]>([]);
   const [uploadingKyc, setUploadingKyc] = useState(false);
-  const [uploadedKeys, setUploadedKeys] = useState<string[]>([]);
 
   // General
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
 
   // Fetch institutions on mount
   useEffect(() => {
@@ -162,7 +160,7 @@ export default function SellerRegisterPage() {
         return;
       }
 
-      setUserId(data.userId);
+      // userId available as data.userId if needed later
 
       if (data.otpRequired) {
         setStep("otp");
@@ -270,8 +268,7 @@ export default function SellerRegisterPage() {
           return;
         }
 
-        const data = await res.json();
-        setUploadedKeys((prev) => [...prev, data.s3Key]);
+        await res.json(); // consume response
       }
 
       setStep("done");
