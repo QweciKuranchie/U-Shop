@@ -9,6 +9,7 @@ import SellerLayout from "../app/(seller)/layout";
 import { headers } from "next/headers";
 import { prisma } from "../lib/prisma";
 import { NextRequest } from "next/server";
+import { getSafeRedirectPath } from "../app/(auth)/login/page";
 
 // Mock next/headers
 vi.mock("next/headers", () => ({
@@ -83,6 +84,8 @@ type SessionType = {
   };
 };
 
+type AwaitedSession = Awaited<ReturnType<typeof auth.api.getSession>>;
+
 describe("T3 Auth Contracts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,7 +100,7 @@ describe("T3 Auth Contracts", () => {
       };
       
       const mockSignUp = vi.mocked(authClient.signUp.email).mockResolvedValue(
-        mockResult as unknown as ReturnType<typeof authClient.signUp.email>
+        mockResult as unknown as Awaited<ReturnType<typeof authClient.signUp.email>>
       );
 
       const credentials = { email: "test@ug.edu.gh", password: "password123", name: "John" };
@@ -113,7 +116,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       const mockSignIn = vi.mocked(authClient.signIn.email).mockResolvedValue(
-        mockResult as unknown as ReturnType<typeof authClient.signIn.email>
+        mockResult as unknown as Awaited<ReturnType<typeof authClient.signIn.email>>
       );
 
       const credentials = { email: "test@ug.edu.gh", password: "password123" };
@@ -149,7 +152,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       const promise = requireRole(new Headers(), "admin");
@@ -174,7 +177,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       const result = await requireRole(new Headers(), "admin");
@@ -232,10 +235,10 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
-      await expect(AuthLayout({ children: "content" })).rejects.toThrow("Redirect: /buyer/dashboard");
+      await expect(AuthLayout({ children: "content" })).rejects.toThrow("Redirect: /account");
     });
 
     it("should redirect logged-in admin to admin/dashboard", async () => {
@@ -252,7 +255,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       await expect(AuthLayout({ children: "content" })).rejects.toThrow("Redirect: /admin/dashboard");
@@ -290,13 +293,13 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       await expect(BuyerLayout({ children: "content" })).rejects.toThrow("Redirect: /unauthorized");
     });
 
-    it("should redirect unverified buyers to /login?error=unauthorized", async () => {
+    it("should redirect unverified buyers to /login?error=email-not-verified", async () => {
       const mockSession: SessionType = {
         user: { id: "u1", email: "unverified@ug.edu.gh", role: "buyer", emailVerified: false },
         session: {
@@ -310,10 +313,10 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
-      await expect(BuyerLayout({ children: "content" })).rejects.toThrow("Redirect: /login?error=unauthorized");
+      await expect(BuyerLayout({ children: "content" })).rejects.toThrow("Redirect: /login?error=email-not-verified");
     });
 
     it("should render children for verified buyers", async () => {
@@ -330,7 +333,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       const result = await BuyerLayout({ children: "buyer-content" });
@@ -354,7 +357,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       const m = new Map<string, string>();
@@ -379,7 +382,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue({
@@ -410,7 +413,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue({
@@ -440,7 +443,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue(null);
@@ -469,6 +472,38 @@ describe("T3 Auth Contracts", () => {
 
       const response = middleware(mockRequest as unknown as NextRequest) as unknown as { type: string };
       expect(response.type).toBe("next");
+    });
+  });
+
+  // ── 8. callbackUrl Open Redirect Validation ──────────────────────────────────────
+  describe("callbackUrl Open Redirect Validation", () => {
+    it("should allow trusted internal paths", () => {
+      expect(getSafeRedirectPath("/account", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("/buyer/dashboard", "/account")).toBe("/buyer/dashboard");
+      expect(getSafeRedirectPath("/some-path?url=https://evil.com", "/account")).toBe("/some-path?url=https://evil.com");
+    });
+
+    it("should reject absolute URLs and fall back to default destination", () => {
+      expect(getSafeRedirectPath("https://evil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("http://evil.com/path", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("ftp://evil.com", "/account")).toBe("/account");
+    });
+
+    it("should reject protocol-relative and backslash URLs", () => {
+      expect(getSafeRedirectPath("//evil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("\\\\evil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("\\/evil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("/\\evil.com", "/account")).toBe("/account");
+    });
+
+    it("should reject URL-encoded absolute URLs", () => {
+      expect(getSafeRedirectPath("%2F%2Fevil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("%5C%5Cevil.com", "/account")).toBe("/account");
+    });
+
+    it("should reject script-style URLs", () => {
+      expect(getSafeRedirectPath("javascript:alert(1)", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("data:text/html,<html>", "/account")).toBe("/account");
     });
   });
 });

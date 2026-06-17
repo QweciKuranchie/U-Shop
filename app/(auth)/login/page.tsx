@@ -6,6 +6,25 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import { authClient } from "@/lib/auth-client";
 
+export function getSafeRedirectPath(callbackUrl: string | null, defaultDestination: string): string {
+  if (!callbackUrl) return defaultDestination;
+  try {
+    const decoded = decodeURIComponent(callbackUrl).trim();
+    // Accept only trusted internal application paths:
+    // Must start with a single '/' and NOT be followed by another '/' or '\'
+    // Reject protocol-based/absolute URLs and script-style values (e.g., javascript:, data:).
+    const isSafe = /^\/(?!\/|\\)/.test(decoded) &&
+                   !decoded.toLowerCase().includes("javascript:") &&
+                   !decoded.toLowerCase().includes("data:") &&
+                   !/^[a-z\d+\-.]+:\/\//i.test(decoded) &&
+                   !decoded.startsWith("//") &&
+                   !decoded.startsWith("\\");
+    return isSafe ? decoded : defaultDestination;
+  } catch {
+    return defaultDestination;
+  }
+}
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,28 +87,27 @@ function LoginContent() {
 
       setIsLoading(false);
 
-      if (callbackUrl) {
-        // Check if callbackUrl matches the role.
-        if (callbackUrl.startsWith("/admin") && role !== "admin") {
-          router.push("/unauthorized");
-        } else if (callbackUrl.startsWith("/seller") && role !== "seller") {
-          router.push("/unauthorized");
-        } else if (callbackUrl.startsWith("/rider") && role !== "rider") {
-          router.push("/unauthorized");
-        } else {
-          router.push(callbackUrl);
-        }
+      // Define default destination based on role
+      let defaultDestination = "/account";
+      if (role === "admin") {
+        defaultDestination = "/admin/dashboard";
+      } else if (role === "seller") {
+        defaultDestination = "/seller/dashboard";
+      } else if (role === "rider") {
+        defaultDestination = "/rider";
+      }
+
+      const safeRedirect = getSafeRedirectPath(callbackUrl, defaultDestination);
+
+      // Check if safeRedirect matches the role restrictions.
+      if (safeRedirect.startsWith("/admin") && role !== "admin") {
+        router.push("/unauthorized");
+      } else if (safeRedirect.startsWith("/seller") && role !== "seller") {
+        router.push("/unauthorized");
+      } else if (safeRedirect.startsWith("/rider") && role !== "rider") {
+        router.push("/unauthorized");
       } else {
-        // Default redirect based on actual role
-        if (role === "admin") {
-          router.push("/admin/dashboard");
-        } else if (role === "seller") {
-          router.push("/seller/dashboard");
-        } else if (role === "rider") {
-          router.push("/rider");
-        } else {
-          router.push("/buyer/dashboard");
-        }
+        router.push(safeRedirect);
       }
     } catch {
       setErrorMsg("An unexpected error occurred. Please try again.");

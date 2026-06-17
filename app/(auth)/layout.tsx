@@ -23,7 +23,7 @@ export default async function AuthLayout({
       } else if (role === "rider") {
         redirect("/rider");
       } else {
-        redirect("/buyer/dashboard");
+        redirect("/account");
       }
     }
   } catch (error) {

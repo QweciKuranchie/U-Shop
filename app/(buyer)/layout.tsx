@@ -25,7 +25,7 @@ export default async function BuyerLayout({
     }
 
     if (!session.user.emailVerified) {
-      redirect("/login?error=unauthorized");
+      redirect("/login?error=email-not-verified");
     }
   } catch (error) {
     if (isRedirectError(error)) {
