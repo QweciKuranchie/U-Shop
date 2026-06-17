@@ -68,7 +68,6 @@ export async function verifyDeliveryOTP(
 
   return { success: true };
 }
-
 // ── Seller Registration OTP ───────────────────────────────────────
 // Compliance: T4 Spec — 6-digit, 10-min TTL, 3-attempt lockout
 
@@ -83,9 +82,9 @@ export const SELLER_OTP_MAX_ATTEMPTS = 3;
  * Used for student seller `.edu.gh` email verification during registration.
  */
 export async function generateSellerOTP(): Promise<{
-  raw: string;
-  hash: string;
-  expiresAt: Date;
+  raw: string; // Send to seller via Resend — NEVER store this
+  hash: string; // Store in DB
+  expiresAt: Date; // Store in DB
 }> {
   const rawInt = crypto.randomInt(0, 1000000);
   const raw = rawInt.toString().padStart(6, "0");
