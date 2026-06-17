@@ -5,6 +5,8 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import LogoutButton from "./logout-button";
 
+export const dynamic = "force-dynamic";
+
 export default async function AccountPage() {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
