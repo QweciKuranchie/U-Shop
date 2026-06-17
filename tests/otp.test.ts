@@ -5,7 +5,6 @@ import {
   generateSellerOTP,
   verifySellerOTP,
 } from "../lib/otp";
-import bcrypt from "bcryptjs";
 
 describe("OTP Library (lib/otp.ts)", () => {
   it("should generate delivery OTP that is exactly 4 digits", async () => {

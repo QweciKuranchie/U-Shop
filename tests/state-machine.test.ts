@@ -4,7 +4,6 @@ import {
   InvalidStateTransitionError,
   UnauthorisedTransitionError,
 } from "../lib/orders/state-machine";
-import { OrderStatus } from "../generated/prisma";
 
 describe("Order State Machine (lib/orders/state-machine.ts)", () => {
   it("should allow assertValidTransition('PAID', 'PROCESSING') to pass", () => {
@@ -19,8 +18,11 @@ describe("Order State Machine (lib/orders/state-machine.ts)", () => {
     expect(() => assertValidTransition("PROCESSING", "COMPLETED")).toThrow(InvalidStateTransitionError);
     try {
       assertValidTransition("PROCESSING", "COMPLETED");
-    } catch (e: any) {
-      expect(e.statusCode).toBe(422);
+    } catch (e: unknown) {
+      expect(e).toBeInstanceOf(InvalidStateTransitionError);
+      if (e instanceof InvalidStateTransitionError) {
+        expect(e.statusCode).toBe(422);
+      }
     }
   });
 
@@ -28,8 +30,11 @@ describe("Order State Machine (lib/orders/state-machine.ts)", () => {
     expect(() => assertValidTransition("DELIVERED", "PROCESSING")).toThrow(InvalidStateTransitionError);
     try {
       assertValidTransition("DELIVERED", "PROCESSING");
-    } catch (e: any) {
-      expect(e.statusCode).toBe(422);
+    } catch (e: unknown) {
+      expect(e).toBeInstanceOf(InvalidStateTransitionError);
+      if (e instanceof InvalidStateTransitionError) {
+        expect(e.statusCode).toBe(422);
+      }
     }
   });
 
@@ -59,8 +64,11 @@ describe("Order State Machine (lib/orders/state-machine.ts)", () => {
     expect(() => assertValidTransition("PAID", "PROCESSING", "buyer")).toThrow(UnauthorisedTransitionError);
     try {
       assertValidTransition("PAID", "PROCESSING", "buyer");
-    } catch (e: any) {
-      expect(e.statusCode).toBe(403);
+    } catch (e: unknown) {
+      expect(e).toBeInstanceOf(UnauthorisedTransitionError);
+      if (e instanceof UnauthorisedTransitionError) {
+        expect(e.statusCode).toBe(403);
+      }
     }
 
     // DELIVERED -> COMPLETED is only for admin, not seller
