@@ -383,7 +383,7 @@ export default async function Home() {
               </h2>
               <p className="text-sm md:text-base text-slate-400 font-light max-w-lg mx-auto mb-8 leading-relaxed">
                 Join hundreds of campus sellers. List your products, reach buyers across universities,
-                and earn with just 5% commission.
+                and earn with low commission rates (5% for students, 8% for individuals/businesses).
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link

@@ -25,14 +25,14 @@ const TIER_INFO: Record<Tier, { emoji: string; title: string; desc: string; comm
     emoji: "🏢",
     title: "Business Seller",
     desc: "For registered businesses. Upload your business registration certificate.",
-    commission: "5%",
+    commission: "8%",
     docLabel: "Upload Business Registration Certificate",
   },
   INDIVIDUAL: {
     emoji: "👤",
     title: "Individual Seller",
     desc: "For individual sellers. Upload a valid Ghana Card or Passport.",
-    commission: "5%",
+    commission: "8%",
     docLabel: "Upload Ghana Card / Passport",
   },
 };

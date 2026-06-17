@@ -5,25 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { authClient } from "@/lib/auth-client";
-
-export function getSafeRedirectPath(callbackUrl: string | null, defaultDestination: string): string {
-  if (!callbackUrl) return defaultDestination;
-  try {
-    const decoded = decodeURIComponent(callbackUrl).trim();
-    // Accept only trusted internal application paths:
-    // Must start with a single '/' and NOT be followed by another '/' or '\'
-    // Reject protocol-based/absolute URLs and script-style values (e.g., javascript:, data:).
-    const isSafe = /^\/(?!\/|\\)/.test(decoded) &&
-                   !decoded.toLowerCase().includes("javascript:") &&
-                   !decoded.toLowerCase().includes("data:") &&
-                   !/^[a-z\d+\-.]+:\/\//i.test(decoded) &&
-                   !decoded.startsWith("//") &&
-                   !decoded.startsWith("\\");
-    return isSafe ? decoded : defaultDestination;
-  } catch {
-    return defaultDestination;
-  }
-}
+import { getSafeRedirectPath } from "@/lib/auth-guards";
 
 function LoginContent() {
   const router = useRouter();
@@ -103,7 +85,26 @@ function LoginContent() {
       if (safeRedirect.startsWith("/admin") && role !== "admin") {
         router.push("/unauthorized");
       } else if (safeRedirect.startsWith("/seller") && role !== "seller") {
-        router.push("/unauthorized");
+        const isApplicationRedirect = safeRedirect === "/seller/application" || safeRedirect.startsWith("/seller/application/");
+        let allowed = false;
+        if (isApplicationRedirect) {
+          try {
+            const res = await fetch("/api/seller/profile");
+            if (res.ok) {
+              const { profile } = await res.json();
+              if (profile && (profile.status.startsWith("PENDING_") || profile.status === "REJECTED")) {
+                allowed = true;
+              }
+            }
+          } catch (e) {
+            console.error("Failed to fetch seller profile at login", e);
+          }
+        }
+        if (allowed) {
+          router.push(safeRedirect);
+        } else {
+          router.push("/unauthorized");
+        }
       } else if (safeRedirect.startsWith("/rider") && role !== "rider") {
         router.push("/unauthorized");
       } else {

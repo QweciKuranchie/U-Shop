@@ -98,6 +98,7 @@ enum EmailJobType {
   ORDER_DELIVERED       @map("order-delivered")
   PAYOUT_SENT           @map("payout-sent")
   REFUND_STARTED        @map("refund-started")
+  SELLER_RESUBMITTED    @map("seller-resubmitted")
 }
 
 // ── Better Auth Models ───────────────────────────────────────────────
@@ -195,6 +196,7 @@ model SellerProfile {
   commissionRate  Decimal      @default(0.05) @db.Decimal(5, 4)
   kycDocKeys      Json         @default("[]")  // String[] of S3 keys — private bucket
   rejectionReason String?
+  otpVerified     Boolean      @default(false)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -406,3 +408,18 @@ model EmailOutbox {
   @@index([status])
   @@map("email_outbox")
 }
+
+model SellerOtp {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  otpHash    String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  isVerified Boolean  @default(false)
+  isLocked   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("seller_otps")
+}
+

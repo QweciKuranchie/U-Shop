@@ -51,14 +51,14 @@ export async function verifyDeliveryOTP(
   | { success: true }
   | { success: false; reason: "OTP_EXPIRED" | "OTP_MISMATCH" | "OTP_LOCKED" }
 > {
-  // Check lockout FIRST
-  if (attempts >= OTP_MAX_ATTEMPTS) {
-    return { success: false, reason: "OTP_LOCKED" };
-  }
-
-  // Check expiry
+  // Check expiry FIRST
   if (new Date() > expiresAt) {
     return { success: false, reason: "OTP_EXPIRED" };
+  }
+
+  // Check lockout
+  if (attempts >= OTP_MAX_ATTEMPTS) {
+    return { success: false, reason: "OTP_LOCKED" };
   }
 
   // Timing-safe bcrypt comparison
@@ -109,12 +109,12 @@ export async function verifySellerOTP(
   | { success: true }
   | { success: false; reason: "OTP_EXPIRED" | "OTP_MISMATCH" | "OTP_LOCKED" }
 > {
-  if (attempts >= SELLER_OTP_MAX_ATTEMPTS) {
-    return { success: false, reason: "OTP_LOCKED" };
-  }
-
   if (new Date() > expiresAt) {
     return { success: false, reason: "OTP_EXPIRED" };
+  }
+
+  if (attempts >= SELLER_OTP_MAX_ATTEMPTS) {
+    return { success: false, reason: "OTP_LOCKED" };
   }
 
   const matches = await bcrypt.compare(submitted, storedHash);

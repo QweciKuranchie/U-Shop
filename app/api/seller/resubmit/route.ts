@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { queueEmail } from "@/lib/notifications/outbox";
-import { Prisma } from "../../../../generated/prisma";
+import { EmailJobType, Prisma } from "../../../../generated/prisma";
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,28 +49,28 @@ export async function POST(request: NextRequest) {
     };
     const newStatus = statusMap[sellerProfile.tier] || "PENDING_INDIVIDUAL";
 
-    // ── Update profile: replace KYC docs, reset status ────────────
-    await prisma.sellerProfile.update({
-      where: { id: sellerProfile.id },
-      data: {
-        kycDocKeys: kycDocKeys as unknown as Prisma.InputJsonValue,
-        status: newStatus,
-        rejectionReason: null,
-      },
-    });
+    // ── Update profile and outbox inside transaction ──────────────
+    await prisma.$transaction(async (tx) => {
+      await tx.sellerProfile.update({
+        where: { id: sellerProfile.id },
+        data: {
+          kycDocKeys: kycDocKeys as unknown as Prisma.InputJsonValue,
+          status: newStatus,
+          rejectionReason: null,
+        },
+      });
 
-    // ── Queue admin notification email ────────────────────────────
-    // Notify admin about resubmission (using SELLER_OTP type as a proxy
-    // since we don't have a dedicated RESUBMISSION type)
-    await queueEmail({
-      to: "admin@ushop.com",
-      subject: `KYC Resubmission: ${sellerProfile.storeName}`,
-      jobType: "SELLER_OTP",
-      payload: {
-        storeName: sellerProfile.storeName,
-        handle: sellerProfile.handle,
-        resubmission: true,
-      },
+      // ── Queue admin notification email ────────────────────────────
+      await queueEmail({
+        to: "admin@ushop.com",
+        subject: `KYC Resubmission: ${sellerProfile.storeName}`,
+        jobType: "SELLER_RESUBMITTED" as unknown as EmailJobType,
+        payload: {
+          storeName: sellerProfile.storeName,
+          handle: sellerProfile.handle,
+          resubmission: true,
+        },
+      }, tx);
     });
 
     return NextResponse.json({

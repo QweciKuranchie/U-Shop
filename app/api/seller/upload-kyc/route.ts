@@ -52,6 +52,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Enforce that STUDENT sellers cannot upload unless OTP is verified ──
+    const profile = sellerProfile as unknown as { tier: string; otpVerified: boolean };
+    if (profile.tier === "STUDENT" && !profile.otpVerified) {
+      return NextResponse.json(
+        { error: "Student email verification (OTP) must be completed before uploading KYC documents." },
+        { status: 403 }
+      );
+    }
+
     // ── Upload to private S3 ──────────────────────────────────────
     const buffer = Buffer.from(await file.arrayBuffer());
     const s3Key = await uploadKYCDocument(buffer, file.type, session.user.id);

@@ -3,6 +3,16 @@
 
 import { Prisma } from "../generated/prisma";
 
+export const COMMISSION_RATES = {
+  STUDENT: 0.05,
+  BUSINESS: 0.08,
+  INDIVIDUAL: 0.08,
+} as const;
+
+export function getCommissionRate(tier: string): number {
+  return COMMISSION_RATES[tier as keyof typeof COMMISSION_RATES] ?? 0.05;
+}
+
 export interface PricingInput {
   vendorPrice: Prisma.Decimal;
   commissionRate: Prisma.Decimal; // e.g. Decimal("0.05") or Decimal("0.08")

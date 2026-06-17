@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { generateSellerOTP } from "@/lib/otp";
 import { queueEmail } from "@/lib/notifications/outbox";
+import { getCommissionRate } from "@/lib/pricing";
 
 export async function POST(request: NextRequest) {
   try {
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
         campus: campus || null,
         tier: tier as "STUDENT" | "BUSINESS" | "INDIVIDUAL",
         status: statusMap[tier],
-        commissionRate: 0.05,
+        commissionRate: getCommissionRate(tier),
         kycDocKeys: [],
       },
     });
@@ -136,12 +137,45 @@ export async function POST(request: NextRequest) {
     if (tier === "STUDENT") {
       const { raw, hash, expiresAt } = await generateSellerOTP();
 
-      // Store OTP in Verification table
-      await prisma.verification.create({
-        data: {
-          identifier: email,
-          value: hash,
+      // Store OTP in SellerOtp table (upserting to avoid duplicates/conflicts)
+      const db = prisma as unknown as {
+        sellerOtp: {
+          upsert: (args: {
+            where: { email: string };
+            create: {
+              email: string;
+              otpHash: string;
+              expiresAt: Date;
+              attempts: number;
+              isVerified: boolean;
+              isLocked: boolean;
+            };
+            update: {
+              otpHash: string;
+              expiresAt: Date;
+              attempts: number;
+              isVerified: boolean;
+              isLocked: boolean;
+            };
+          }) => Promise<unknown>;
+        };
+      };
+      await db.sellerOtp.upsert({
+        where: { email },
+        create: {
+          email,
+          otpHash: hash,
           expiresAt,
+          attempts: 0,
+          isVerified: false,
+          isLocked: false,
+        },
+        update: {
+          otpHash: hash,
+          expiresAt,
+          attempts: 0,
+          isVerified: false,
+          isLocked: false,
         },
       });
 

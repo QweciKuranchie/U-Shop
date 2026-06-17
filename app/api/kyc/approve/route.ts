@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole, AuthError } from "@/lib/auth-guards";
 import { queueEmail } from "@/lib/notifications/outbox";
+import { getCommissionRate } from "@/lib/pricing";
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,36 +39,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Commission rate (5% for all tiers) ────────────────────────
-    const commissionRate = 0.05;
+    // ── Commission rate based on tier ────────────────────────────
+    const commissionRate = getCommissionRate(profile.tier);
 
-    // ── Update SellerProfile → ACTIVE ─────────────────────────────
-    await prisma.sellerProfile.update({
-      where: { id: sellerProfileId },
-      data: {
-        status: "ACTIVE",
-        commissionRate,
-        rejectionReason: null,
-      },
+    // ── Update SellerProfile, User, and Outbox in transaction ──────
+    await prisma.$transaction(async (tx) => {
+      // 1. Update SellerProfile → ACTIVE
+      await tx.sellerProfile.update({
+        where: { id: sellerProfileId },
+        data: {
+          status: "ACTIVE",
+          commissionRate,
+          rejectionReason: null,
+        },
+      });
+
+      // 2. Upgrade user.role → "seller"
+      await tx.user.update({
+        where: { id: profile.userId },
+        data: { role: "seller" },
+      });
+
+      // 3. Queue welcome email
+      await queueEmail({
+        to: profile.user.email,
+        subject: "🎉 Your U-Shop Store Has Been Approved!",
+        jobType: "SELLER_APPROVED",
+        payload: {
+          storeName: profile.storeName,
+          handle: profile.handle,
+          name: profile.user.name,
+        },
+      }, tx);
     });
 
-    // ── Upgrade user.role → "seller" ──────────────────────────────
-    await prisma.user.update({
-      where: { id: profile.userId },
-      data: { role: "seller" },
-    });
-
-    // ── Queue welcome email ───────────────────────────────────────
-    await queueEmail({
-      to: profile.user.email,
-      subject: "🎉 Your U-Shop Store Has Been Approved!",
-      jobType: "SELLER_APPROVED",
-      payload: {
-        storeName: profile.storeName,
-        handle: profile.handle,
-        name: profile.user.name,
-      },
-    });
 
     return NextResponse.json({
       success: true,
