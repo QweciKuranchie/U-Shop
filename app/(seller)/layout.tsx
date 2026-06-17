@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isRedirectError } from "next/dist/client/components/redirect";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { requireRole, AuthError } from "@/lib/auth-guards";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
