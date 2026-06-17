@@ -1,5 +1,6 @@
 // lib/otp.ts
 // Compliance: U-Shop SRD v1.1 §6.4
+// TS Trigger comment: forcing compiler type refresh
 
 import crypto from "crypto";
 import bcrypt from "bcryptjs";

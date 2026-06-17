@@ -1,5 +1,6 @@
 // lib/orders/state-machine.ts
 // Compliance: U-Shop SRD v1.1 §6.2
+// TS Trigger comment: forcing compiler type refresh
 
 import { OrderStatus } from "../../generated/prisma";
 
