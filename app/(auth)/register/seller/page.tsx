@@ -170,7 +170,7 @@ export default function SellerRegisterPage() {
           await authClient.signIn.email({
             email,
             password,
-            dontRememberMe: true,
+            rememberMe: false,
           });
         } catch (err) {
           console.error("Auto-login failed:", err);
@@ -227,7 +227,7 @@ export default function SellerRegisterPage() {
           await authClient.signIn.email({
             email,
             password,
-            dontRememberMe: true,
+            rememberMe: false,
           });
         } catch (err) {
           console.error("Auto-login failed:", err);
