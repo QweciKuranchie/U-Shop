@@ -39,6 +39,7 @@ const config: Config = {
         "brand-red":     "#FF0000",
         "brand-purple":  "#5D1A89",
         "brand-magenta": "#D1148A",
+        "brand-pink":    "#D1148A", // Aliased to brand-magenta as it's used extensively in pages
 
         // Purple scale (complements Deep Purple brand color)
         purple: {

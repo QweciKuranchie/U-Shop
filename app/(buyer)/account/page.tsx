@@ -1,27 +1,15 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import LogoutButton from "./logout-button";
 
+export const dynamic = "force-dynamic";
+
 export default async function AccountPage() {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({ headers: reqHeaders });
-
-  if (!session?.user) {
-    redirect("/login?callbackUrl=/account");
-  }
-
-  if (session.user.role !== "buyer") {
-    redirect("/unauthorized");
-  }
-
-  if (!session.user.emailVerified) {
-    redirect("/login?error=unauthorized");
-  }
-
-  const { user } = session;
+  const user = session!.user;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col font-sans relative overflow-hidden">
