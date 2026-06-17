@@ -5,6 +5,9 @@ import { authClient } from "../lib/auth-client";
 import { middleware } from "../middleware";
 import AuthLayout from "../app/(auth)/layout";
 import BuyerLayout from "../app/(buyer)/layout";
+import SellerLayout from "../app/(seller)/layout";
+import { headers } from "next/headers";
+import { prisma } from "../lib/prisma";
 import { NextRequest } from "next/server";
 
 // Mock next/headers
@@ -55,7 +58,11 @@ vi.mock("../lib/auth-client", () => ({
 
 // Mock prisma client
 vi.mock("../lib/prisma", () => ({
-  prisma: {},
+  prisma: {
+    sellerProfile: {
+      findUnique: vi.fn(),
+    },
+  },
 }));
 
 type SessionType = {
@@ -328,6 +335,140 @@ describe("T3 Auth Contracts", () => {
 
       const result = await BuyerLayout({ children: "buyer-content" });
       expect(result).toEqual("buyer-content");
+    });
+  });
+
+  // ── 6. app/(seller)/layout.tsx ──────────────────────────────────────────────────
+  describe("Seller Protected Layout", () => {
+    it("should allow approved sellers to access any seller route", async () => {
+      const mockSession: SessionType = {
+        user: { id: "u1", email: "seller@ushop.com", role: "seller" },
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
+
+      const m = new Map<string, string>();
+      m.set("x-invoke-path", "/seller/dashboard");
+      vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
+
+      const result = await SellerLayout({ children: "seller-content" });
+      expect(result).toEqual("seller-content");
+    });
+
+    it("should allow provisional buyers accessing /seller/application if they have a pending profile", async () => {
+      const mockSession: SessionType = {
+        user: { id: "u1", email: "pending@ug.edu.gh", role: "buyer" },
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
+
+      vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue({
+        id: "p1",
+        userId: "u1",
+        status: "PENDING_STUDENT",
+      } as unknown as Awaited<ReturnType<typeof prisma.sellerProfile.findUnique>>);
+
+      const m = new Map<string, string>();
+      m.set("x-invoke-path", "/seller/application");
+      vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
+
+      const result = await SellerLayout({ children: "seller-content" });
+      expect(result).toEqual("seller-content");
+    });
+
+    it("should redirect provisional buyers to /unauthorized if accessing dashboard /seller/dashboard", async () => {
+      const mockSession: SessionType = {
+        user: { id: "u1", email: "pending@ug.edu.gh", role: "buyer" },
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
+
+      vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue({
+        id: "p1",
+        userId: "u1",
+        status: "PENDING_STUDENT",
+      } as unknown as Awaited<ReturnType<typeof prisma.sellerProfile.findUnique>>);
+
+      const m = new Map<string, string>();
+      m.set("x-invoke-path", "/seller/dashboard");
+      vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
+
+      await expect(SellerLayout({ children: "content" })).rejects.toThrow("Redirect: /unauthorized");
+    });
+
+    it("should redirect normal buyers (no profile) accessing /seller/application to /unauthorized", async () => {
+      const mockSession: SessionType = {
+        user: { id: "u1", email: "buyer@ushop.com", role: "buyer" },
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
+
+      vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue(null);
+
+      const m = new Map<string, string>();
+      m.set("x-invoke-path", "/seller/application");
+      vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
+
+      await expect(SellerLayout({ children: "content" })).rejects.toThrow("Redirect: /unauthorized");
+    });
+  });
+
+  // ── 7. HTTPS Secure Cookie Regression ──────────────────────────────────────────
+  describe("Middleware Protected HTTPS Secure Cookie", () => {
+    it("should allow request to proceed if secure session cookie is present (HTTPS)", () => {
+      const mockRequest = {
+        nextUrl: new URL("https://localhost/admin/dashboard"),
+        url: "https://localhost/admin/dashboard",
+        cookies: {
+          get: vi.fn().mockImplementation((name: string) => {
+            if (name === "__Secure-better-auth.session_token") return { value: "token123" };
+            return undefined;
+          }),
+        },
+      };
+
+      const response = middleware(mockRequest as unknown as NextRequest) as unknown as { type: string };
+      expect(response.type).toBe("next");
     });
   });
 });
