@@ -5,11 +5,12 @@ import { authClient } from "../lib/auth-client";
 import { middleware } from "../middleware";
 import AuthLayout from "../app/(auth)/layout";
 import BuyerLayout from "../app/(buyer)/layout";
+import { NextRequest } from "next/server";
 
 // Mock next/headers
 vi.mock("next/headers", () => ({
   headers: vi.fn(async () => {
-    const m = new Map();
+    const m = new Map<string, string>();
     m.set("x-invoke-path", "/account");
     return m;
   }),
@@ -58,6 +59,24 @@ vi.mock("../lib/prisma", () => ({
   prisma: {},
 }));
 
+type SessionType = {
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    emailVerified?: boolean;
+    name?: string;
+  };
+  session: {
+    id: string;
+    expiresAt: Date;
+    token: string;
+    createdAt: Date;
+    updatedAt: Date;
+    userId: string;
+  };
+};
+
 describe("T3 Auth Contracts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,10 +85,14 @@ describe("T3 Auth Contracts", () => {
   // ── 1. Buyer Registration/Login Happy Path ─────────────────────────────────────
   describe("Registration & Login Client Flow", () => {
     it("should invoke signUp.email with correct buyer credentials", async () => {
-      const mockSignUp = vi.mocked(authClient.signUp.email).mockResolvedValue({
+      const mockResult = {
         data: { user: { id: "u1", email: "test@ug.edu.gh", name: "John" } },
         error: null,
-      } as any);
+      };
+      
+      const mockSignUp = vi.mocked(authClient.signUp.email).mockResolvedValue(
+        mockResult as unknown as ReturnType<typeof authClient.signUp.email>
+      );
 
       const credentials = { email: "test@ug.edu.gh", password: "password123", name: "John" };
       await authClient.signUp.email(credentials);
@@ -78,10 +101,14 @@ describe("T3 Auth Contracts", () => {
     });
 
     it("should invoke signIn.email with correct credentials", async () => {
-      const mockSignIn = vi.mocked(authClient.signIn.email).mockResolvedValue({
+      const mockResult = {
         data: { user: { id: "u1", email: "test@ug.edu.gh", role: "buyer" } },
         error: null,
-      } as any);
+      };
+
+      const mockSignIn = vi.mocked(authClient.signIn.email).mockResolvedValue(
+        mockResult as unknown as ReturnType<typeof authClient.signIn.email>
+      );
 
       const credentials = { email: "test@ug.edu.gh", password: "password123" };
       await authClient.signIn.email(credentials);
@@ -95,28 +122,54 @@ describe("T3 Auth Contracts", () => {
     it("should throw UNAUTHENTICATED if session does not exist", async () => {
       vi.mocked(auth.api.getSession).mockResolvedValue(null);
 
-      await expect(requireRole(new Headers(), "admin")).rejects.toThrow(
+      const promise = requireRole(new Headers(), "admin");
+      await expect(promise).rejects.toThrow(AuthError);
+      await expect(promise).rejects.toThrow(
         expect.objectContaining({ code: "UNAUTHENTICATED", status: 401 })
       );
     });
 
     it("should throw FORBIDDEN if session role does not match required roles", async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
+      const mockSession = {
         user: { id: "u1", email: "test@ug.edu.gh", role: "buyer" },
-        session: {} as any,
-      });
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
 
-      await expect(requireRole(new Headers(), "admin")).rejects.toThrow(
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
+
+      const promise = requireRole(new Headers(), "admin");
+      await expect(promise).rejects.toThrow(AuthError);
+      await expect(promise).rejects.toThrow(
         expect.objectContaining({ code: "FORBIDDEN", status: 403 })
       );
     });
 
     it("should pass and return user if role matches", async () => {
       const mockUser = { id: "u1", email: "admin@ushop.com", role: "admin" };
-      vi.mocked(auth.api.getSession).mockResolvedValue({
+      const mockSession = {
         user: mockUser,
-        session: {} as any,
-      });
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
 
       const result = await requireRole(new Headers(), "admin");
       expect(result.user).toEqual(mockUser);
@@ -132,9 +185,9 @@ describe("T3 Auth Contracts", () => {
         cookies: {
           get: vi.fn().mockReturnValue(undefined), // No cookie
         },
-      } as any;
+      };
 
-      const response = middleware(mockRequest) as any;
+      const response = middleware(mockRequest as unknown as NextRequest) as unknown as { type: string; url: string };
       expect(response.type).toBe("redirect");
       expect(response.url).toContain("/login");
       expect(response.url).toContain("callbackUrl=%2Fadmin%2Fdashboard");
@@ -145,14 +198,14 @@ describe("T3 Auth Contracts", () => {
         nextUrl: new URL("http://localhost/admin/dashboard"),
         url: "http://localhost/admin/dashboard",
         cookies: {
-          get: vi.fn().mockImplementation((name) => {
+          get: vi.fn().mockImplementation((name: string) => {
             if (name === "better-auth.session_token") return { value: "token123" };
             return undefined;
           }),
         },
-      } as any;
+      };
 
-      const response = middleware(mockRequest) as any;
+      const response = middleware(mockRequest as unknown as NextRequest) as unknown as { type: string };
       expect(response.type).toBe("next");
     });
   });
@@ -160,19 +213,41 @@ describe("T3 Auth Contracts", () => {
   // ── 4. app/(auth)/layout.tsx ────────────────────────────────────────────────────
   describe("Auth Shared Layout", () => {
     it("should redirect logged-in users away from login/register pages", async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
+      const mockSession: SessionType = {
         user: { id: "u1", email: "buyer@ug.edu.gh", role: "buyer" },
-        session: {} as any,
-      });
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
 
       await expect(AuthLayout({ children: "content" })).rejects.toThrow("Redirect: /buyer/dashboard");
     });
 
     it("should redirect logged-in admin to admin/dashboard", async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
+      const mockSession: SessionType = {
         user: { id: "u1", email: "admin@ushop.com", role: "admin" },
-        session: {} as any,
-      });
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
 
       await expect(AuthLayout({ children: "content" })).rejects.toThrow("Redirect: /admin/dashboard");
     });
@@ -196,28 +271,61 @@ describe("T3 Auth Contracts", () => {
     });
 
     it("should redirect users with non-buyer roles to /unauthorized", async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
+      const mockSession: SessionType = {
         user: { id: "u1", email: "seller@ug.edu.gh", role: "seller" },
-        session: {} as any,
-      });
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
 
       await expect(BuyerLayout({ children: "content" })).rejects.toThrow("Redirect: /unauthorized");
     });
 
     it("should redirect unverified buyers to /login?error=unauthorized", async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
+      const mockSession: SessionType = {
         user: { id: "u1", email: "unverified@ug.edu.gh", role: "buyer", emailVerified: false },
-        session: {} as any,
-      });
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
 
       await expect(BuyerLayout({ children: "content" })).rejects.toThrow("Redirect: /login?error=unauthorized");
     });
 
     it("should render children for verified buyers", async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue({
+      const mockSession: SessionType = {
         user: { id: "u1", email: "verified@ug.edu.gh", role: "buyer", emailVerified: true },
-        session: {} as any,
-      });
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+      );
 
       const result = await BuyerLayout({ children: "buyer-content" });
       expect(result).toEqual("buyer-content");
