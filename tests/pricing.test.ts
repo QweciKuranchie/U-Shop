@@ -13,14 +13,14 @@ describe("Pricing Calculations (lib/pricing.ts)", () => {
     // Worked Example from Spec:
     // listingPrice: 368.42 (350 / 0.95 = 368.421... -> 368.42)
     // checkoutPrice: 398.42 (368.42 + 30.00)
-    // paystackFee: 8.29 (398.42 * 0.0195 + 0.50 = 8.2892 -> 8.29)
-    // totalCharged: 406.71 (398.42 + 8.29)
+    // paystackFee: 8.27 (398.42 * 0.0195 + 0.50 = 8.26919 -> 8.27)
+    // totalCharged: 406.69 (398.42 + 8.27)
     // commissionAmount: 18.42 (368.42 - 350.00)
     // sellerReceivable: 350.00
     expect(result.listingPrice.toString()).toBe("368.42");
     expect(result.checkoutPrice.toString()).toBe("398.42");
-    expect(result.paystackFee.toString()).toBe("8.29");
-    expect(result.totalCharged.toString()).toBe("406.71");
+    expect(result.paystackFee.toString()).toBe("8.27");
+    expect(result.totalCharged.toString()).toBe("406.69");
     expect(result.commissionAmount.toString()).toBe("18.42");
     expect(result.sellerReceivable.toString()).toBe("350");
   });
@@ -63,7 +63,7 @@ describe("Pricing Calculations (lib/pricing.ts)", () => {
       deliveryFee: deliveryZoneFlatFee,
     });
 
-    expect(result.deliveryFee).toBe(deliveryZoneFlatFee);
+    expect(result.deliveryFee).toStrictEqual(deliveryZoneFlatFee);
     expect(result.deliveryFee.toString()).toBe("25");
   });
 

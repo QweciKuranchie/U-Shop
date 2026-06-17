@@ -1,3 +1,5 @@
+// tests/state-machine.test.ts
+// TS Cache Refresh Trigger
 import { describe, it, expect } from "vitest";
 import {
   assertValidTransition,
