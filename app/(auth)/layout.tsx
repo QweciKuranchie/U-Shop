@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
-import { redirect, isRedirectError } from "next/navigation";
+import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect";
 import { auth } from "@/lib/auth";
 
 export default async function AuthLayout({

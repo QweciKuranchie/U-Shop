@@ -75,9 +75,9 @@ const CONDITION_LABELS: Record<string, string> = {
 };
 
 export default async function Home() {
-  let products: any[] = [];
+  let products: Awaited<ReturnType<typeof getFeaturedProducts>> = [];
   let categories: string[] = [];
-  let sellers: any[] = [];
+  let sellers: Awaited<ReturnType<typeof getActiveSellers>> = [];
   let dbError = false;
 
   try {
