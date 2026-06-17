@@ -107,6 +107,14 @@ export async function POST(request: NextRequest) {
 
     const userId = signUpResult.user.id;
 
+    // ── Automatically verify email for Business and Individual tiers ──
+    if (tier !== "STUDENT") {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { emailVerified: true },
+      });
+    }
+
     // ── Determine pending status based on tier ────────────────────
     const statusMap: Record<string, "PENDING_STUDENT" | "PENDING_BUSINESS" | "PENDING_INDIVIDUAL"> = {
       STUDENT: "PENDING_STUDENT",

@@ -155,6 +155,11 @@ export async function POST(request: NextRequest) {
         where: { id: user.sellerProfile.id },
         data: { otpVerified: true },
       });
+      // Set emailVerified: true on user table to allow credentials sign-in
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true },
+      });
     }
 
     return NextResponse.json({

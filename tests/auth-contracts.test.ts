@@ -9,7 +9,7 @@ import SellerLayout from "../app/(seller)/layout";
 import { headers } from "next/headers";
 import { prisma } from "../lib/prisma";
 import { NextRequest } from "next/server";
-import { getSafeRedirectPath } from "../lib/auth-guards";
+import { getSafeRedirectPath } from "../lib/redirects";
 
 // Mock next/headers
 vi.mock("next/headers", () => ({

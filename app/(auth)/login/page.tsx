@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { authClient } from "@/lib/auth-client";
-import { getSafeRedirectPath } from "@/lib/auth-guards";
+import { getSafeRedirectPath } from "@/lib/redirects";
 
 function LoginContent() {
   const router = useRouter();
