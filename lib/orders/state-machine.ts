@@ -57,16 +57,18 @@ export class UnauthorisedTransitionError extends Error {
 export function assertValidTransition(
   from: OrderStatus,
   to: OrderStatus,
-  actorRole: string
+  actorRole?: string
 ): void {
   const allowed = VALID_TRANSITIONS[from];
   if (!allowed.includes(to)) {
     throw new InvalidStateTransitionError(from, to);
   }
 
-  const permittedActors = TRANSITION_ACTORS[`${from}->${to}`] ?? [];
-  if (!permittedActors.includes(actorRole)) {
-    throw new UnauthorisedTransitionError(actorRole, from, to);
+  if (actorRole !== undefined) {
+    const permittedActors = TRANSITION_ACTORS[`${from}->${to}`] ?? [];
+    if (!permittedActors.includes(actorRole)) {
+      throw new UnauthorisedTransitionError(actorRole, from, to);
+    }
   }
 }
 
