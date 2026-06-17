@@ -75,14 +75,32 @@ const CONDITION_LABELS: Record<string, string> = {
 };
 
 export default async function Home() {
-  const [products, categories, sellers] = await Promise.all([
-    getFeaturedProducts(),
-    getActiveCategories(),
-    getActiveSellers(),
-  ]);
+  let products: any[] = [];
+  let categories: string[] = [];
+  let sellers: any[] = [];
+  let dbError = false;
+
+  try {
+    const [fetchedProducts, fetchedCategories, fetchedSellers] = await Promise.all([
+      getFeaturedProducts(),
+      getActiveCategories(),
+      getActiveSellers(),
+    ]);
+    products = fetchedProducts;
+    categories = fetchedCategories;
+    sellers = fetchedSellers;
+  } catch (error) {
+    console.error("Database fetch failed on homepage:", error);
+    dbError = true;
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white font-sans relative overflow-hidden">
+      {dbError && (
+        <div className="bg-brand-red/10 border-b border-brand-red/20 py-2.5 px-6 text-center text-xs text-brand-red font-medium flex items-center justify-center gap-2 z-50 relative">
+          <span>⚠️</span> The campus database is currently undergoing maintenance. Showing offline view.
+        </div>
+      )}
       {/* ── Background Ambient Glows ─────────────────────────────── */}
       <div className="fixed top-[-15%] left-[-10%] w-[55%] h-[55%] rounded-full bg-brand-purple/15 blur-[160px] pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-brand-pink/10 blur-[160px] pointer-events-none" />

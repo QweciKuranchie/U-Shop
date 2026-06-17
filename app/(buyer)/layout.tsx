@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, isRedirectError } from "next/navigation";
 import { auth } from "@/lib/auth";
 
 export default async function BuyerLayout({
@@ -7,20 +7,29 @@ export default async function BuyerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
 
-  if (!session?.user) {
-    const pathname = reqHeaders.get("x-invoke-path") || "";
-    const callbackQuery = pathname ? `?callbackUrl=${encodeURIComponent(pathname)}` : "";
-    redirect(`/login${callbackQuery}`);
-  }
+    if (!session?.user) {
+      const pathname = reqHeaders.get("x-invoke-path") || "";
+      const callbackQuery = pathname ? `?callbackUrl=${encodeURIComponent(pathname)}` : "";
+      redirect(`/login${callbackQuery}`);
+    }
 
-  if (session.user.role !== "buyer") {
-    redirect("/unauthorized");
-  }
+    if (session.user.role !== "buyer") {
+      redirect("/unauthorized");
+    }
 
-  if (!session.user.emailVerified) {
+    if (!session.user.emailVerified) {
+      redirect("/login?error=unauthorized");
+    }
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error("Buyer layout session check failed:", error);
+    // If the database check throws a connection failure, send to login page gracefully
     redirect("/login?error=unauthorized");
   }
 

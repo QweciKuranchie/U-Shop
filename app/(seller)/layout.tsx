@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, isRedirectError } from "next/navigation";
 import { requireRole, AuthError } from "@/lib/auth-guards";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +17,9 @@ export default async function SellerLayout({
       await requireRole(reqHeaders, "seller");
       return <>{children}</>;
     } catch (sellerError) {
+      if (isRedirectError(sellerError)) {
+        throw sellerError;
+      }
       if (!(sellerError instanceof AuthError)) throw sellerError;
 
       // If UNAUTHENTICATED, always redirect to login
@@ -42,9 +45,13 @@ export default async function SellerLayout({
       redirect("/unauthorized");
     }
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     if (error instanceof AuthError) {
       redirect("/login");
     }
-    throw error; // Re-throw redirect() calls from Next.js
+    console.error("Seller layout check failed:", error);
+    redirect("/login");
   }
 }

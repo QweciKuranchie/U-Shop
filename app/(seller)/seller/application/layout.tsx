@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, isRedirectError } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -13,21 +13,29 @@ export default async function SellerApplicationLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({ headers: reqHeaders });
+  try {
+    const reqHeaders = await headers();
+    const session = await auth.api.getSession({ headers: reqHeaders });
 
-  if (!session?.user) {
-    redirect("/login?callbackUrl=/seller/application");
-  }
+    if (!session?.user) {
+      redirect("/login?callbackUrl=/seller/application");
+    }
 
-  // Check that user has a SellerProfile (provisional or approved)
-  const profile = await prisma.sellerProfile.findUnique({
-    where: { userId: session.user.id },
-    select: { id: true },
-  });
+    // Check that user has a SellerProfile (provisional or approved)
+    const profile = await prisma.sellerProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true },
+    });
 
-  if (!profile) {
-    redirect("/register/seller");
+    if (!profile) {
+      redirect("/register/seller");
+    }
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error("Seller application layout check failed:", error);
+    redirect("/login");
   }
 
   return <>{children}</>;
