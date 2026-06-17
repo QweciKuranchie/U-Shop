@@ -19,6 +19,8 @@ export interface PricingSnapshot {
   totalCharged: Prisma.Decimal;
   commissionAmount: Prisma.Decimal;
   sellerReceivable: Prisma.Decimal;
+  paystackRate: Prisma.Decimal;
+  paystackFlat: Prisma.Decimal;
 }
 
 const PAYSTACK_RATE = new Prisma.Decimal("0.0195"); // 1.95%
@@ -67,5 +69,7 @@ export function computeOrderPricing(input: PricingInput): PricingSnapshot {
     totalCharged: totalCharged.toDecimalPlaces(DECIMAL_SCALE),
     commissionAmount: commissionAmount.toDecimalPlaces(DECIMAL_SCALE),
     sellerReceivable: sellerReceivable.toDecimalPlaces(DECIMAL_SCALE),
+    paystackRate: PAYSTACK_RATE,
+    paystackFlat: PAYSTACK_FLAT,
   };
 }
