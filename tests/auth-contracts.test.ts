@@ -17,11 +17,10 @@ vi.mock("next/headers", () => ({
 }));
 
 // Mock next/navigation
-const mockRedirect = vi.fn((url: string) => {
-  throw new Error(`Redirect: ${url}`);
-});
 vi.mock("next/navigation", () => ({
-  redirect: mockRedirect,
+  redirect: vi.fn((url: string) => {
+    throw new Error(`Redirect: ${url}`);
+  }),
 }));
 
 // Mock next/server
