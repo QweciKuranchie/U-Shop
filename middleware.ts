@@ -28,7 +28,7 @@ export function middleware(request: NextRequest): NextResponse {
   // runtime via auth.api.getSession() inside the page/route handler.
   const sessionCookie =
     request.cookies.get("better-auth.session_token") ||
-    request.cookies.get("__secure-better-auth.session_token");
+    request.cookies.get("__Secure-better-auth.session_token");
 
   if (!sessionCookie?.value) {
     // No session cookie at all — redirect to login
