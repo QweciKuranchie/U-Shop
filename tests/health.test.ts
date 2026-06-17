@@ -28,13 +28,13 @@ describe("Health API", () => {
     expect(prisma.$queryRaw).toHaveBeenCalled();
   });
 
-  it("should return error and status 500 when db ping fails", async () => {
+  it("should return error and status 503 when db ping fails", async () => {
     vi.mocked(prisma.$queryRaw).mockRejectedValue(new Error("DB Connection timeout"));
 
     const response = await GET();
     const data = await response.json();
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(503);
     expect(data).toEqual({ status: "error", db: "disconnected" });
   });
 });
