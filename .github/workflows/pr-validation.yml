@@ -37,3 +37,6 @@ jobs:
 
       - name: Lint code
         run: pnpm eslint . --max-warnings 0
+
+      - name: Run Tests
+        run: pnpm test

@@ -15,7 +15,7 @@ export async function GET() {
 
     return NextResponse.json(
       { status: "error", db: "disconnected" },
-      { status: 500 }
+      { status: 503 }
     );
   }
 }

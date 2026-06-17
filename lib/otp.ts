@@ -68,3 +68,59 @@ export async function verifyDeliveryOTP(
 
   return { success: true };
 }
+
+// ── Seller Registration OTP ───────────────────────────────────────
+// Compliance: T4 Spec — 6-digit, 10-min TTL, 3-attempt lockout
+
+/** Seller OTP TTL in milliseconds (10 minutes) */
+const SELLER_OTP_TTL_MS = 10 * 60 * 1000;
+
+/** Max seller OTP verification attempts before lockout */
+export const SELLER_OTP_MAX_ATTEMPTS = 3;
+
+/**
+ * Generate a cryptographically random 6-digit seller verification OTP.
+ * Used for student seller `.edu.gh` email verification during registration.
+ */
+export async function generateSellerOTP(): Promise<{
+  raw: string;
+  hash: string;
+  expiresAt: Date;
+}> {
+  const rawInt = crypto.randomInt(0, 1000000);
+  const raw = rawInt.toString().padStart(6, "0");
+
+  const hash = await bcrypt.hash(raw, BCRYPT_SALT_ROUNDS);
+  const expiresAt = new Date(Date.now() + SELLER_OTP_TTL_MS);
+
+  return { raw, hash, expiresAt };
+}
+
+/**
+ * Verify a student seller OTP against the stored bcrypt hash.
+ * 3-attempt lockout with 10-min expiry.
+ */
+export async function verifySellerOTP(
+  submitted: string,
+  storedHash: string,
+  expiresAt: Date,
+  attempts: number
+): Promise<
+  | { success: true }
+  | { success: false; reason: "OTP_EXPIRED" | "OTP_MISMATCH" | "OTP_LOCKED" }
+> {
+  if (attempts >= SELLER_OTP_MAX_ATTEMPTS) {
+    return { success: false, reason: "OTP_LOCKED" };
+  }
+
+  if (new Date() > expiresAt) {
+    return { success: false, reason: "OTP_EXPIRED" };
+  }
+
+  const matches = await bcrypt.compare(submitted, storedHash);
+  if (!matches) {
+    return { success: false, reason: "OTP_MISMATCH" };
+  }
+
+  return { success: true };
+}

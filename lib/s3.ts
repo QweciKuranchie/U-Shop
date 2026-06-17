@@ -166,3 +166,44 @@ export async function deleteProductImages(imageS3Keys: string[]): Promise<void> 
     throw error;
   }
 }
+
+/** Allowed KYC MIME types */
+const ALLOWED_KYC_MIMES = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * Upload a KYC document to the private S3 bucket.
+ * No image processing — stores the original file as-is.
+ * Validates MIME type (JPEG/PNG/WEBP) and max 5MB.
+ */
+export async function uploadKYCDocument(
+  rawBuffer: Buffer,
+  originalMime: string,
+  userId: string
+): Promise<string> {
+  if (rawBuffer.length > MAX_BYTES) {
+    throw new Error("Document exceeds 5MB limit");
+  }
+
+  if (!ALLOWED_KYC_MIMES.includes(originalMime)) {
+    throw new Error("Invalid file type. Only JPEG, PNG, and WEBP are accepted.");
+  }
+
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+  const ext = extMap[originalMime] || "jpg";
+  const key = `kyc/${userId}/${randomUUID()}.${ext}`;
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: KYC_BUCKET,
+      Key: key,
+      Body: rawBuffer,
+      ContentType: originalMime,
+    })
+  );
+
+  return key;
+}
