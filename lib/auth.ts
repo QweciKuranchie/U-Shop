@@ -75,6 +75,9 @@ export const auth = betterAuth({
     crossSubDomainCookies: {
       enabled: false,                     // Single domain: ushopgh.com
     },
+    ipAddress: {
+      ipAddressHeaders: ["x-vercel-forwarded-for", "x-forwarded-for"],
+    },
   },
 
   // ── Rate limiting on auth endpoints ─────────────────────────────
