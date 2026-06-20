@@ -203,7 +203,7 @@ model SellerProfile {
   products Product[]
 
   @@index([handle])
-  @@index([status])
+  @@index([status, createdAt(sort: Desc)])
   @@index([campus])
   @@map("seller_profiles")
 }
