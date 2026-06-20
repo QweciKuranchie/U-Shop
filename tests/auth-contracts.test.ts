@@ -5,7 +5,11 @@ import { authClient } from "../lib/auth-client";
 import { middleware } from "../middleware";
 import AuthLayout from "../app/(auth)/layout";
 import BuyerLayout from "../app/(buyer)/layout";
+import SellerLayout from "../app/(seller)/layout";
+import { headers } from "next/headers";
+import { prisma } from "../lib/prisma";
 import { NextRequest } from "next/server";
+import { getSafeRedirectPath } from "../lib/redirects";
 
 // Mock next/headers
 vi.mock("next/headers", () => ({
@@ -55,7 +59,11 @@ vi.mock("../lib/auth-client", () => ({
 
 // Mock prisma client
 vi.mock("../lib/prisma", () => ({
-  prisma: {},
+  prisma: {
+    sellerProfile: {
+      findUnique: vi.fn(),
+    },
+  },
 }));
 
 type SessionType = {
@@ -76,6 +84,8 @@ type SessionType = {
   };
 };
 
+type AwaitedSession = Awaited<ReturnType<typeof auth.api.getSession>>;
+
 describe("T3 Auth Contracts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -90,7 +100,7 @@ describe("T3 Auth Contracts", () => {
       };
       
       const mockSignUp = vi.mocked(authClient.signUp.email).mockResolvedValue(
-        mockResult as unknown as ReturnType<typeof authClient.signUp.email>
+        mockResult as unknown as Awaited<ReturnType<typeof authClient.signUp.email>>
       );
 
       const credentials = { email: "test@ug.edu.gh", password: "password123", name: "John" };
@@ -106,7 +116,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       const mockSignIn = vi.mocked(authClient.signIn.email).mockResolvedValue(
-        mockResult as unknown as ReturnType<typeof authClient.signIn.email>
+        mockResult as unknown as Awaited<ReturnType<typeof authClient.signIn.email>>
       );
 
       const credentials = { email: "test@ug.edu.gh", password: "password123" };
@@ -142,7 +152,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       const promise = requireRole(new Headers(), "admin");
@@ -167,7 +177,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       const result = await requireRole(new Headers(), "admin");
@@ -225,10 +235,10 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
-      await expect(AuthLayout({ children: "content" })).rejects.toThrow("Redirect: /buyer/dashboard");
+      await expect(AuthLayout({ children: "content" })).rejects.toThrow("Redirect: /account");
     });
 
     it("should redirect logged-in admin to admin/dashboard", async () => {
@@ -245,7 +255,7 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       await expect(AuthLayout({ children: "content" })).rejects.toThrow("Redirect: /admin/dashboard");
@@ -283,13 +293,13 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       await expect(BuyerLayout({ children: "content" })).rejects.toThrow("Redirect: /unauthorized");
     });
 
-    it("should redirect unverified buyers to /login?error=unauthorized", async () => {
+    it("should redirect unverified buyers to /login?error=email-not-verified", async () => {
       const mockSession: SessionType = {
         user: { id: "u1", email: "unverified@ug.edu.gh", role: "buyer", emailVerified: false },
         session: {
@@ -303,10 +313,10 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
-      await expect(BuyerLayout({ children: "content" })).rejects.toThrow("Redirect: /login?error=unauthorized");
+      await expect(BuyerLayout({ children: "content" })).rejects.toThrow("Redirect: /login?error=email-not-verified");
     });
 
     it("should render children for verified buyers", async () => {
@@ -323,11 +333,177 @@ describe("T3 Auth Contracts", () => {
       };
 
       vi.mocked(auth.api.getSession).mockResolvedValue(
-        mockSession as unknown as ReturnType<typeof auth.api.getSession>
+        mockSession as unknown as AwaitedSession
       );
 
       const result = await BuyerLayout({ children: "buyer-content" });
       expect(result).toEqual("buyer-content");
+    });
+  });
+
+  // ── 6. app/(seller)/layout.tsx ──────────────────────────────────────────────────
+  describe("Seller Protected Layout", () => {
+    it("should allow approved sellers to access any seller route", async () => {
+      const mockSession: SessionType = {
+        user: { id: "u1", email: "seller@ushop.com", role: "seller" },
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as AwaitedSession
+      );
+
+      const m = new Map<string, string>();
+      m.set("x-invoke-path", "/seller/dashboard");
+      vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
+
+      const result = await SellerLayout({ children: "seller-content" });
+      expect(result).toEqual("seller-content");
+    });
+
+    it("should allow provisional buyers accessing /seller/application if they have a pending profile", async () => {
+      const mockSession: SessionType = {
+        user: { id: "u1", email: "pending@ug.edu.gh", role: "buyer" },
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as AwaitedSession
+      );
+
+      vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue({
+        id: "p1",
+        userId: "u1",
+        status: "PENDING_STUDENT",
+      } as unknown as Awaited<ReturnType<typeof prisma.sellerProfile.findUnique>>);
+
+      const m = new Map<string, string>();
+      m.set("x-invoke-path", "/seller/application");
+      vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
+
+      const result = await SellerLayout({ children: "seller-content" });
+      expect(result).toEqual("seller-content");
+    });
+
+    it("should redirect provisional buyers to /unauthorized if accessing dashboard /seller/dashboard", async () => {
+      const mockSession: SessionType = {
+        user: { id: "u1", email: "pending@ug.edu.gh", role: "buyer" },
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as AwaitedSession
+      );
+
+      vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue({
+        id: "p1",
+        userId: "u1",
+        status: "PENDING_STUDENT",
+      } as unknown as Awaited<ReturnType<typeof prisma.sellerProfile.findUnique>>);
+
+      const m = new Map<string, string>();
+      m.set("x-invoke-path", "/seller/dashboard");
+      vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
+
+      await expect(SellerLayout({ children: "content" })).rejects.toThrow("Redirect: /unauthorized");
+    });
+
+    it("should redirect normal buyers (no profile) accessing /seller/application to /unauthorized", async () => {
+      const mockSession: SessionType = {
+        user: { id: "u1", email: "buyer@ushop.com", role: "buyer" },
+        session: {
+          id: "s1",
+          expiresAt: new Date(),
+          token: "tok",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId: "u1",
+        },
+      };
+
+      vi.mocked(auth.api.getSession).mockResolvedValue(
+        mockSession as unknown as AwaitedSession
+      );
+
+      vi.mocked(prisma.sellerProfile.findUnique).mockResolvedValue(null);
+
+      const m = new Map<string, string>();
+      m.set("x-invoke-path", "/seller/application");
+      vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
+
+      await expect(SellerLayout({ children: "content" })).rejects.toThrow("Redirect: /unauthorized");
+    });
+  });
+
+  // ── 7. HTTPS Secure Cookie Regression ──────────────────────────────────────────
+  describe("Middleware Protected HTTPS Secure Cookie", () => {
+    it("should allow request to proceed if secure session cookie is present (HTTPS)", () => {
+      const mockRequest = {
+        nextUrl: new URL("https://localhost/admin/dashboard"),
+        url: "https://localhost/admin/dashboard",
+        cookies: {
+          get: vi.fn().mockImplementation((name: string) => {
+            if (name === "__Secure-better-auth.session_token") return { value: "token123" };
+            return undefined;
+          }),
+        },
+      };
+
+      const response = middleware(mockRequest as unknown as NextRequest) as unknown as { type: string };
+      expect(response.type).toBe("next");
+    });
+  });
+
+  // ── 8. callbackUrl Open Redirect Validation ──────────────────────────────────────
+  describe("callbackUrl Open Redirect Validation", () => {
+    it("should allow trusted internal paths", () => {
+      expect(getSafeRedirectPath("/account", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("/buyer/dashboard", "/account")).toBe("/buyer/dashboard");
+      expect(getSafeRedirectPath("/some-path?url=https://evil.com", "/account")).toBe("/some-path?url=https://evil.com");
+    });
+
+    it("should reject absolute URLs and fall back to default destination", () => {
+      expect(getSafeRedirectPath("https://evil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("http://evil.com/path", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("ftp://evil.com", "/account")).toBe("/account");
+    });
+
+    it("should reject protocol-relative and backslash URLs", () => {
+      expect(getSafeRedirectPath("//evil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("\\\\evil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("\\/evil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("/\\evil.com", "/account")).toBe("/account");
+    });
+
+    it("should reject URL-encoded absolute URLs", () => {
+      expect(getSafeRedirectPath("%2F%2Fevil.com", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("%5C%5Cevil.com", "/account")).toBe("/account");
+    });
+
+    it("should reject script-style URLs", () => {
+      expect(getSafeRedirectPath("javascript:alert(1)", "/account")).toBe("/account");
+      expect(getSafeRedirectPath("data:text/html,<html>", "/account")).toBe("/account");
     });
   });
 });

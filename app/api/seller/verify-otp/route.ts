@@ -4,6 +4,40 @@ import { verifySellerOTP, SELLER_OTP_MAX_ATTEMPTS } from "@/lib/otp";
 
 export async function POST(request: NextRequest) {
   try {
+    interface TempSellerOtp {
+      id: string;
+      email: string;
+      otpHash: string;
+      expiresAt: Date;
+      attempts: number;
+      isVerified: boolean;
+      isLocked: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+    }
+    const db = prisma as unknown as {
+      sellerOtp: {
+        findUnique: (args: {
+          where: { email: string };
+        }) => Promise<TempSellerOtp | null>;
+        update: (args: {
+          where: { email: string };
+          data: Partial<TempSellerOtp>;
+        }) => Promise<TempSellerOtp>;
+      };
+      user: {
+        findUnique: (args: {
+          where: { email: string };
+          include?: { sellerProfile: boolean };
+        }) => Promise<{ id: string; email: string; sellerProfile: { id: string } | null } | null>;
+      };
+      sellerProfile: {
+        update: (args: {
+          where: { id: string };
+          data: { otpVerified: boolean };
+        }) => Promise<unknown>;
+      };
+    };
     const body = await request.json();
     const { email, otp } = body;
 
@@ -14,44 +48,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Find the latest Verification record for this email ────────
-    const verification = await prisma.verification.findFirst({
-      where: { identifier: email },
-      orderBy: { createdAt: "desc" },
+    // ── Find the SellerOtp record for this email ────────
+    const sellerOtp = await db.sellerOtp.findUnique({
+      where: { email },
     });
 
-    if (!verification) {
+    if (!sellerOtp) {
       return NextResponse.json(
         { error: "No OTP found for this email. Please request a new one." },
         { status: 404 }
       );
     }
 
-    // ── Count previous failed attempts (using createdAt as proxy) ──
-    // We track attempts by counting verifications with same identifier
-    // that have been created after the current one (failed re-tries)
-    // For simplicity, we store attempt count in a separate query pattern:
-    // Check all verifications for this email to count attempts
-    const allVerifications = await prisma.verification.findMany({
-      where: { identifier: email },
-      orderBy: { createdAt: "desc" },
-    });
+    // Check expiry first
+    if (new Date() > sellerOtp.expiresAt) {
+      if (sellerOtp.isLocked || sellerOtp.attempts > 0) {
+        await db.sellerOtp.update({
+          where: { email },
+          data: {
+            attempts: 0,
+            isLocked: false,
+          },
+        });
+      }
+      return NextResponse.json(
+        {
+          verified: false,
+          reason: "OTP_EXPIRED",
+          message: "OTP has expired. Please request a new one.",
+        },
+        { status: 410 }
+      );
+    }
 
-    // The number of verification records beyond the first is our attempt count
-    const attempts = Math.max(0, allVerifications.length - 1);
+    // Check lockout (only if active / not expired)
+    if (sellerOtp.isLocked || sellerOtp.attempts >= SELLER_OTP_MAX_ATTEMPTS) {
+      const lockoutEndsAt = new Date(sellerOtp.expiresAt.getTime());
+      return NextResponse.json(
+        {
+          verified: false,
+          reason: "OTP_LOCKED",
+          lockoutEndsAt: lockoutEndsAt.toISOString(),
+          message: `Too many failed attempts (${SELLER_OTP_MAX_ATTEMPTS} max). Please wait for the lockout to expire.`,
+        },
+        { status: 429 }
+      );
+    }
 
     // ── Verify OTP ────────────────────────────────────────────────
     const result = await verifySellerOTP(
       otp,
-      verification.value,
-      verification.expiresAt,
-      attempts
+      sellerOtp.otpHash,
+      sellerOtp.expiresAt,
+      sellerOtp.attempts
     );
 
     if (!result.success) {
-      if (result.reason === "OTP_LOCKED") {
-        // Calculate lockout end time (10 min from OTP creation)
-        const lockoutEndsAt = new Date(verification.expiresAt.getTime());
+      const nextAttempts = sellerOtp.attempts + 1;
+      const isLockedNow = nextAttempts >= SELLER_OTP_MAX_ATTEMPTS;
+
+      await db.sellerOtp.update({
+        where: { email },
+        data: {
+          attempts: nextAttempts,
+          isLocked: isLockedNow,
+        },
+      });
+
+      if (isLockedNow) {
+        const lockoutEndsAt = new Date(sellerOtp.expiresAt.getTime());
         return NextResponse.json(
           {
             verified: false,
@@ -63,41 +128,39 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (result.reason === "OTP_EXPIRED") {
-        return NextResponse.json(
-          {
-            verified: false,
-            reason: "OTP_EXPIRED",
-            message: "OTP has expired. Please request a new one.",
-          },
-          { status: 410 }
-        );
-      }
-
-      // OTP_MISMATCH — create a new verification record to track attempt
-      await prisma.verification.create({
-        data: {
-          identifier: email,
-          value: verification.value, // same hash
-          expiresAt: verification.expiresAt, // same expiry
-        },
-      });
-
       return NextResponse.json(
         {
           verified: false,
           reason: "OTP_MISMATCH",
-          attemptsRemaining: SELLER_OTP_MAX_ATTEMPTS - (attempts + 1),
+          attemptsRemaining: SELLER_OTP_MAX_ATTEMPTS - nextAttempts,
           message: "Invalid OTP. Please try again.",
         },
         { status: 400 }
       );
     }
 
-    // ── Success: clean up all verification records for this email ──
-    await prisma.verification.deleteMany({
-      where: { identifier: email },
+    // ── Success: clean up OTP record for this email ──
+    await db.sellerOtp.update({
+      where: { email },
+      data: { isVerified: true },
     });
+
+    const user = (await db.user.findUnique({
+      where: { email },
+      include: { sellerProfile: true },
+    })) as { id: string; email: string; sellerProfile: { id: string } | null } | null;
+
+    if (user && user.sellerProfile) {
+      await db.sellerProfile.update({
+        where: { id: user.sellerProfile.id },
+        data: { otpVerified: true },
+      });
+      // Set emailVerified: true on user table to allow credentials sign-in
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true },
+      });
+    }
 
     return NextResponse.json({
       verified: true,

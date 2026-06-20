@@ -2,12 +2,27 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { prisma } from "./prisma";
 import { dash } from "@better-auth/infra";
+import { sentinel } from "@better-auth/infra";
 
 export const auth = betterAuth({
   // ── Database adapter ─────────────────────────────────────────────
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
+
+  appName: "U-Shop",
+
+  trustedOrigins: [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "https://u-shop-git-develop-qwecikuranchies-projects.vercel.app",
+    "https://www.ushopgh.com",
+    ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : []),
+    ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
+    ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",") || []),
+  ],
 
   // ── Email + Password ─────────────────────────────────────────────
   emailAndPassword: {
@@ -20,9 +35,13 @@ export const auth = betterAuth({
   // ── Email verification via Resend ────────────────────────────────
   emailVerification: {
     sendOnSignUp: true,
-    sendVerificationEmail: async ({ user, url }) => {
-      const { sendVerificationEmail } = await import("@/lib/email");
-      await sendVerificationEmail({ to: user.email, url });
+    sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
+      try {
+        const { sendVerificationEmail } = await import("@/lib/email");
+        await sendVerificationEmail({ to: user.email, url });
+      } catch (error) {
+        console.error("Failed to send verification email:", error);
+      }
     },
   },
 
@@ -33,6 +52,7 @@ export const auth = betterAuth({
     cookieCache: {
       enabled:    true,
       maxAge:     60 * 5,                 // Re-use cached session for 5 min
+      strategy:   "jwe",                  // Encrypt session cookie data
     },
   },
 
@@ -59,6 +79,9 @@ export const auth = betterAuth({
     crossSubDomainCookies: {
       enabled: false,                     // Single domain: ushopgh.com
     },
+    ipAddress: {
+      ipAddressHeaders: ["x-vercel-forwarded-for", "x-forwarded-for"],
+    },
   },
 
   // ── Rate limiting on auth endpoints ─────────────────────────────
@@ -68,7 +91,12 @@ export const auth = betterAuth({
     max:     10,                          // 10 auth attempts per window per IP
   },
 
+  experimental: {
+    joins: true,
+  },
+
   plugins: [
     dash(),
+    sentinel(),
   ],
 });

@@ -18,8 +18,12 @@ export interface EmailJobPayload {
 /**
  * Queue an email job in the database.
  */
-export async function queueEmail(job: EmailJobPayload) {
-  return prisma.emailOutbox.create({
+export async function queueEmail(
+  job: EmailJobPayload,
+  tx?: Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">
+) {
+  const client = tx || prisma;
+  return client.emailOutbox.create({
     data: {
       to: job.to,
       subject: job.subject,
@@ -54,6 +58,8 @@ function renderEmailBody(jobType: EmailJobType, payload: Record<string, unknown>
       return `<p>Your payout of GHS ${payload.amount} has been sent. Mobile Money Reference: ${payload.momoRef}</p>`;
     case "REFUND_STARTED":
       return `<p>A refund has been initiated for your order <strong>${payload.ref}</strong>.</p>`;
+    case "SELLER_RESUBMITTED" as unknown as EmailJobType:
+      return `<p>A seller has resubmitted their KYC documents for review. Store: <strong>${payload.storeName}</strong> (@${payload.handle}).</p>`;
     default:
       return `<p>Notification payload: ${JSON.stringify(payload)}</p>`;
   }

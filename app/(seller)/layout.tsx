@@ -31,17 +31,25 @@ export default async function SellerLayout({
       }
 
       // If FORBIDDEN (user exists but wrong role), check if this is a
-      // provisional seller accessing /seller/application
-      const session = await auth.api.getSession({ headers: reqHeaders });
-      if (session?.user) {
-        const profile = await prisma.sellerProfile.findUnique({
-          where: { userId: session.user.id },
-          select: { id: true },
-        });
+      // provisional seller accessing the /seller/application route
+      const pathname = reqHeaders.get("x-invoke-path") || "";
+      const isApplicationRoute = pathname === "/seller/application" || pathname.startsWith("/seller/application/");
 
-        if (profile) {
-          // Provisional seller with a SellerProfile — allow through
-          return <>{children}</>;
+      if (isApplicationRoute) {
+        const session = await auth.api.getSession({ headers: reqHeaders });
+        if (session?.user) {
+          const profile = await prisma.sellerProfile.findUnique({
+            where: { userId: session.user.id },
+            select: { status: true },
+          });
+
+          if (
+            profile &&
+            (profile.status.startsWith("PENDING_") || profile.status === "REJECTED")
+          ) {
+            // Provisional seller with pending/rejected application accessing application page — allow through
+            return <>{children}</>;
+          }
         }
       }
 

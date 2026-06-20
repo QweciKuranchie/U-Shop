@@ -38,25 +38,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Update SellerProfile → REJECTED ───────────────────────────
-    await prisma.sellerProfile.update({
-      where: { id: sellerProfileId },
-      data: {
-        status: "REJECTED",
-        rejectionReason: reason,
-      },
-    });
+    // ── Update profile and outbox inside transaction ──────────────
+    await prisma.$transaction(async (tx) => {
+      // 1. Update SellerProfile → REJECTED
+      await tx.sellerProfile.update({
+        where: { id: sellerProfileId },
+        data: {
+          status: "REJECTED",
+          rejectionReason: reason,
+        },
+      });
 
-    // ── Queue rejection email ─────────────────────────────────────
-    await queueEmail({
-      to: profile.user.email,
-      subject: "U-Shop Seller Application Update",
-      jobType: "SELLER_REJECTED",
-      payload: {
-        reason,
-        storeName: profile.storeName,
-        name: profile.user.name,
-      },
+      // 2. Queue rejection email
+      await queueEmail({
+        to: profile.user.email,
+        subject: "U-Shop Seller Application Update",
+        jobType: "SELLER_REJECTED",
+        payload: {
+          reason,
+          storeName: profile.storeName,
+          name: profile.user.name,
+        },
+      }, tx);
     });
 
     return NextResponse.json({

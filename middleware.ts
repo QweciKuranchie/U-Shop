@@ -19,8 +19,17 @@ export function middleware(request: NextRequest): NextResponse {
     pathname.startsWith(prefix)
   );
 
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-invoke-path", pathname);
+
   // Not a protected route — allow through
-  if (!isProtected) return NextResponse.next();
+  if (!isProtected) {
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
 
   // ── Lightweight cookie presence check ────────────────────────────
   // This does NOT validate the session — it only checks if the cookie exists.
@@ -28,7 +37,7 @@ export function middleware(request: NextRequest): NextResponse {
   // runtime via auth.api.getSession() inside the page/route handler.
   const sessionCookie =
     request.cookies.get("better-auth.session_token") ||
-    request.cookies.get("__secure-better-auth.session_token");
+    request.cookies.get("__Secure-better-auth.session_token");
 
   if (!sessionCookie?.value) {
     // No session cookie at all — redirect to login
@@ -38,7 +47,11 @@ export function middleware(request: NextRequest): NextResponse {
   }
 
   // ── Cookie exists — allow through to Node.js runtime ─────────────
-  return NextResponse.next();
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {

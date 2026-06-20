@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import { authClient } from "@/lib/auth-client";
 
 type Tier = "STUDENT" | "BUSINESS" | "INDIVIDUAL";
 type Step = "tier" | "form" | "otp" | "kyc" | "done";
@@ -25,14 +26,14 @@ const TIER_INFO: Record<Tier, { emoji: string; title: string; desc: string; comm
     emoji: "🏢",
     title: "Business Seller",
     desc: "For registered businesses. Upload your business registration certificate.",
-    commission: "5%",
+    commission: "8%",
     docLabel: "Upload Business Registration Certificate",
   },
   INDIVIDUAL: {
     emoji: "👤",
     title: "Individual Seller",
     desc: "For individual sellers. Upload a valid Ghana Card or Passport.",
-    commission: "5%",
+    commission: "8%",
     docLabel: "Upload Ghana Card / Passport",
   },
 };
@@ -69,6 +70,7 @@ export default function SellerRegisterPage() {
   // KYC
   const [kycFiles, setKycFiles] = useState<File[]>([]);
   const [uploadingKyc, setUploadingKyc] = useState(false);
+  const [onboardingToken, setOnboardingToken] = useState("");
 
   // General
   const [isLoading, setIsLoading] = useState(false);
@@ -163,8 +165,14 @@ export default function SellerRegisterPage() {
       // userId available as data.userId if needed later
 
       if (data.otpRequired) {
+        if (data.onboardingToken) {
+          setOnboardingToken(data.onboardingToken);
+        }
         setStep("otp");
       } else {
+        if (data.onboardingToken) {
+          setOnboardingToken(data.onboardingToken);
+        }
         setStep("kyc");
       }
     } catch {
@@ -213,6 +221,15 @@ export default function SellerRegisterPage() {
       const data = await res.json();
 
       if (data.verified) {
+        try {
+          await authClient.signIn.email({
+            email,
+            password,
+            rememberMe: false,
+          });
+        } catch (err) {
+          console.error("Auto-login failed:", err);
+        }
         setStep("kyc");
       } else if (data.reason === "OTP_LOCKED") {
         setOtpLocked(true);
@@ -227,6 +244,33 @@ export default function SellerRegisterPage() {
       }
     } catch {
       setOtpError("Network error");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    setIsLoading(true);
+    setOtpError("");
+    try {
+      const res = await fetch("/api/seller/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setOtp(["", "", "", "", "", ""]);
+        setOtpLocked(false);
+        setLockoutEndsAt(null);
+        setLockoutCountdown(0);
+        setAttemptsRemaining(3);
+        setOtpError("A new OTP code has been sent to your email.");
+      } else {
+        setOtpError(data.error || "Failed to resend OTP");
+      }
+    } catch {
+      setOtpError("Network error. Failed to resend OTP.");
     } finally {
       setIsLoading(false);
     }
@@ -258,6 +302,9 @@ export default function SellerRegisterPage() {
 
         const res = await fetch("/api/seller/upload-kyc", {
           method: "POST",
+          headers: {
+            "x-onboarding-token": onboardingToken || "",
+          },
           body: formData,
         });
 
@@ -527,9 +574,17 @@ export default function SellerRegisterPage() {
                 <div className="text-5xl mb-4">🔒</div>
                 <h3 className="font-display font-bold text-lg text-white mb-2">Account Locked</h3>
                 <p className="text-xs text-slate-400 mb-4">Too many failed attempts. Please wait:</p>
-                <div className="font-display font-black text-4xl text-brand-pink">
+                <div className="font-display font-black text-4xl text-brand-pink mb-6">
                   {Math.floor(lockoutCountdown / 60)}:{(lockoutCountdown % 60).toString().padStart(2, "0")}
                 </div>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={isLoading}
+                  className="text-xs text-brand-purple hover:text-brand-pink transition-colors font-medium underline disabled:opacity-50"
+                >
+                  {isLoading ? "Resending..." : "Resend OTP Code"}
+                </button>
               </div>
             ) : (
               <form onSubmit={handleOtpSubmit}>
@@ -556,7 +611,7 @@ export default function SellerRegisterPage() {
                 <button
                   type="submit"
                   disabled={isLoading || otp.join("").length !== 6}
-                  className={`w-full py-3.5 rounded-xl bg-gradient-to-r ${accentGradient} text-white font-semibold text-sm transition-all duration-300 transform hover:scale-[1.02] shadow-lg disabled:opacity-50 flex justify-center items-center`}
+                  className={`w-full py-3.5 rounded-xl bg-gradient-to-r ${accentGradient} text-white font-semibold text-sm transition-all duration-300 transform hover:scale-[1.02] shadow-lg disabled:opacity-50 flex justify-center items-center mb-4`}
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -564,6 +619,17 @@ export default function SellerRegisterPage() {
                     "Verify OTP"
                   )}
                 </button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={isLoading}
+                    className="text-xs text-brand-purple hover:text-brand-pink transition-colors font-medium underline disabled:opacity-50"
+                  >
+                    {isLoading ? "Resending..." : "Resend OTP Code"}
+                  </button>
+                </div>
               </form>
             )}
           </div>

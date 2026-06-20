@@ -12,23 +12,46 @@ declare global {
 }
 
 function buildPrismaClient() {
-  const dbUrl = process.env.DATABASE_URL;
+  let dbUrl = process.env.DATABASE_URL;
 
   // 1. Prisma Accelerate (prisma://)
   if (dbUrl && dbUrl.startsWith("prisma://")) {
-    const client = new PrismaClient({
-      log:
-        process.env.NODE_ENV === "development"
-          ? ["query", "warn", "error"]
-          : ["warn", "error"],
-      accelerateUrl: dbUrl,
-    }).$extends(withAccelerate());
-    return client as unknown as PrismaClient;
+    let hasApiKey = false;
+    try {
+      const urlObj = new URL(dbUrl);
+      const apiKey = urlObj.searchParams.get("api_key");
+      if (apiKey && apiKey.trim().length > 0 && !apiKey.includes("placeholder") && !apiKey.includes("<")) {
+        hasApiKey = true;
+      }
+    } catch {
+      hasApiKey = false;
+    }
+
+    if (hasApiKey) {
+      const client = new PrismaClient({
+        log:
+          process.env.NODE_ENV === "development"
+            ? ["query", "warn", "error"]
+            : ["warn", "error"],
+        accelerateUrl: dbUrl,
+      }).$extends(withAccelerate());
+      return client as unknown as PrismaClient;
+    } else {
+      console.warn("Prisma Accelerate URL is invalid or missing a valid api_key query parameter.");
+      if (process.env.DIRECT_DATABASE_URL) {
+        console.warn("Falling back to DIRECT_DATABASE_URL.");
+        dbUrl = process.env.DIRECT_DATABASE_URL;
+      }
+    }
   }
 
   // 2. Direct Driver Adapter (postgres:// or postgresql://)
+  const connectionString = dbUrl || process.env.DIRECT_DATABASE_URL || "postgres://placeholder:placeholder@localhost:5432/ushop";
   const pool = new Pool({
-    connectionString: dbUrl || "postgres://placeholder:placeholder@localhost:5432/ushop",
+    connectionString,
+    ssl: connectionString && (connectionString.includes("rds.amazonaws.com") || connectionString.includes("sslmode=require"))
+      ? { rejectUnauthorized: false }
+      : undefined,
   });
   const adapter = new PrismaPg(pool);
 

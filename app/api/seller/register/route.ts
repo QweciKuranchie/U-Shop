@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { generateSellerOTP } from "@/lib/otp";
 import { queueEmail } from "@/lib/notifications/outbox";
+import { getCommissionRate } from "@/lib/pricing";
+import { generateOnboardingToken } from "@/lib/onboarding-token";
 
 export async function POST(request: NextRequest) {
   try {
@@ -113,60 +115,96 @@ export async function POST(request: NextRequest) {
       INDIVIDUAL: "PENDING_INDIVIDUAL",
     };
 
-    // ── Create SellerProfile ──────────────────────────────────────
-    const sellerProfile = await prisma.sellerProfile.create({
-      data: {
-        userId,
-        handle: handle.toLowerCase(),
-        storeName,
-        bio: bio || null,
-        tagline: tagline || null,
-        phone: phone || null,
-        whatsappNumber: whatsappNumber || null,
-        campus: campus || null,
-        tier: tier as "STUDENT" | "BUSINESS" | "INDIVIDUAL",
-        status: statusMap[tier],
-        commissionRate: 0.05,
-        kycDocKeys: [],
-      },
-    });
+    try {
+      // ── Wrap post-signup DB writes in transaction ────────────────
+      const { sellerProfile, otpRequired } = await prisma.$transaction(async (tx) => {
+        // Create SellerProfile
+        const profile = await tx.sellerProfile.create({
+          data: {
+            userId,
+            handle: handle.toLowerCase(),
+            storeName,
+            bio: bio || null,
+            tagline: tagline || null,
+            phone: phone || null,
+            whatsappNumber: whatsappNumber || null,
+            campus: campus || null,
+            tier: tier as "STUDENT" | "BUSINESS" | "INDIVIDUAL",
+            status: statusMap[tier],
+            commissionRate: getCommissionRate(tier),
+            kycDocKeys: [],
+          },
+        });
 
-    // ── Student tier: generate and queue OTP ──────────────────────
-    let otpRequired = false;
-    if (tier === "STUDENT") {
-      const { raw, hash, expiresAt } = await generateSellerOTP();
+        // Student tier: generate and queue OTP
+        let otpReq = false;
+        if (tier === "STUDENT") {
+          const { raw, hash, expiresAt } = await generateSellerOTP();
 
-      // Store OTP in Verification table
-      await prisma.verification.create({
-        data: {
-          identifier: email,
-          value: hash,
-          expiresAt,
+          // Store OTP in SellerOtp table
+          await tx.sellerOtp.upsert({
+            where: { email },
+            create: {
+              email,
+              otpHash: hash,
+              expiresAt,
+              attempts: 0,
+              isVerified: false,
+              isLocked: false,
+            },
+            update: {
+              otpHash: hash,
+              expiresAt,
+              attempts: 0,
+              isVerified: false,
+              isLocked: false,
+            },
+          });
+
+          // Queue OTP email via outbox
+          await queueEmail({
+            to: email,
+            subject: "U-Shop Seller Verification OTP",
+            jobType: "SELLER_OTP",
+            payload: { otp: raw, storeName, name },
+          }, tx);
+
+          otpReq = true;
+        }
+
+        return { sellerProfile: profile, otpRequired: otpReq };
+      });
+
+      // Generate provisional onboarding token for initial KYC uploads
+      const onboardingToken = generateOnboardingToken(userId);
+
+      return NextResponse.json(
+        {
+          userId,
+          profileId: sellerProfile.id,
+          otpRequired,
+          onboardingToken,
+          message: otpRequired
+            ? "Account created. Please verify your student email with the OTP sent to your inbox."
+            : "Account created. Please upload your KYC documents to complete registration.",
         },
-      });
+        { status: 201 }
+      );
+    } catch (writeError: unknown) {
+      console.error("Seller registration write failure, cleaning up user:", writeError);
 
-      // Queue OTP email via outbox
-      await queueEmail({
-        to: email,
-        subject: "U-Shop Seller Verification OTP",
-        jobType: "SELLER_OTP",
-        payload: { otp: raw, storeName, name },
-      });
+      // Clean up the created auth user so they are not stranded
+      try {
+        await prisma.user.delete({
+          where: { id: userId },
+        });
+      } catch (cleanupError) {
+        console.error("Failed to clean up stranded user:", cleanupError);
+      }
 
-      otpRequired = true;
+      const message = writeError instanceof Error ? writeError.message : "Internal server error";
+      return NextResponse.json({ error: message }, { status: 500 });
     }
-
-    return NextResponse.json(
-      {
-        userId,
-        profileId: sellerProfile.id,
-        otpRequired,
-        message: otpRequired
-          ? "Account created. Please verify your student email with the OTP sent to your inbox."
-          : "Account created. Please upload your KYC documents to complete registration.",
-      },
-      { status: 201 }
-    );
   } catch (error: unknown) {
     console.error("Seller registration error:", error);
     const message = error instanceof Error ? error.message : "Internal server error";

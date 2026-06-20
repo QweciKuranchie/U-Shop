@@ -156,7 +156,7 @@ async function main() {
       campus: "Ghana Communication Technology University",
       tier: "BUSINESS",
       status: "ACTIVE",
-      commissionRate: new Prisma.Decimal("0.05"),
+      commissionRate: new Prisma.Decimal("0.08"),
       kycDocKeys: ["kyc/business-reg-2.pdf"],
     },
   });
@@ -263,9 +263,9 @@ async function main() {
       description: "Unopened box. Industry-leading noise cancellation, 30-hour battery life. Selling because I got it as a gift.",
       category: "AUDIO",
       condition: "NEW",
-      vendorPrice: new Prisma.Decimal("1710.00"),
-      listingPrice: new Prisma.Decimal("1800.00"), // 5% markup
-      commissionRate: new Prisma.Decimal("0.05"),
+      vendorPrice: new Prisma.Decimal("1656.00"),
+      listingPrice: new Prisma.Decimal("1800.00"), // 8% markup
+      commissionRate: new Prisma.Decimal("0.08"),
       imageS3Keys: ["products/sony-xm4.jpg"],
       status: "ACTIVE",
     },
@@ -278,9 +278,9 @@ async function main() {
       description: "Support 4K @ 60Hz. Aluminum shell, durable braided nylon cable. Compatible with MacBooks, iPad Pro, and Windows PCs.",
       category: "ACCESSORIES",
       condition: "NEW",
-      vendorPrice: new Prisma.Decimal("95.00"),
+      vendorPrice: new Prisma.Decimal("92.00"),
       listingPrice: new Prisma.Decimal("100.00"),
-      commissionRate: new Prisma.Decimal("0.05"),
+      commissionRate: new Prisma.Decimal("0.08"),
       imageS3Keys: ["products/adapter.jpg"],
       status: "ACTIVE",
     },
@@ -327,15 +327,15 @@ async function main() {
       productId: headphones.id,
       riderId: rider2.id,
       deliveryAddressId: buyer2Address.id,
-      vendorPrice: new Prisma.Decimal("1710.00"),
-      commissionRate: new Prisma.Decimal("0.05"),
+      vendorPrice: new Prisma.Decimal("1656.00"),
+      commissionRate: new Prisma.Decimal("0.08"),
       listingPrice: new Prisma.Decimal("1800.00"),
       deliveryFee: new Prisma.Decimal("25.00"), // East Legon flat fee
       checkoutPrice: new Prisma.Decimal("1825.00"), // 1800.00 + 25.00
       paystackFee: new Prisma.Decimal("36.09"), // (1825.00 * 0.0195) + 0.50 = 36.0875 -> 36.09
       totalCharged: new Prisma.Decimal("1861.09"), // 1825.00 + 36.09
-      commissionAmount: new Prisma.Decimal("90.00"),
-      sellerReceivable: new Prisma.Decimal("1710.00"),
+      commissionAmount: new Prisma.Decimal("144.00"),
+      sellerReceivable: new Prisma.Decimal("1656.00"),
       paymentMethod: "CARD",
       paystackReference: "pstk_success_456123789",
       status: "IN_TRANSIT",

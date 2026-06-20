@@ -1,3 +1,4 @@
+import React from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
@@ -25,7 +26,7 @@ export default async function BuyerLayout({
     }
 
     if (!session.user.emailVerified) {
-      redirect("/login?error=unauthorized");
+      redirect("/login?error=email-not-verified");
     }
   } catch (error) {
     if (isRedirectError(error)) {
