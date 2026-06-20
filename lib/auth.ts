@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { prisma } from "./prisma";
 import { dash } from "@better-auth/infra";
+import { sentinel } from "@better-auth/infra";
 
 export const auth = betterAuth({
   // ── Database adapter ─────────────────────────────────────────────
@@ -96,5 +97,6 @@ export const auth = betterAuth({
 
   plugins: [
     dash(),
+    sentinel(),
   ],
 });
