@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         findUnique: (args: {
           where: { email: string };
           include?: { sellerProfile: boolean };
-        }) => Promise<{ sellerProfile: { id: string } | null } | null>;
+        }) => Promise<{ id: string; email: string; sellerProfile: { id: string } | null } | null>;
       };
       sellerProfile: {
         update: (args: {
