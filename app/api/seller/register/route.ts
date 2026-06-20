@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { generateSellerOTP } from "@/lib/otp";
 import { queueEmail } from "@/lib/notifications/outbox";
 import { getCommissionRate } from "@/lib/pricing";
+import { generateOnboardingToken } from "@/lib/onboarding-token";
 
 export async function POST(request: NextRequest) {
   try {
@@ -107,14 +108,6 @@ export async function POST(request: NextRequest) {
 
     const userId = signUpResult.user.id;
 
-    // ── Automatically verify email for Business and Individual tiers ──
-    if (tier !== "STUDENT") {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { emailVerified: true },
-      });
-    }
-
     // ── Determine pending status based on tier ────────────────────
     const statusMap: Record<string, "PENDING_STUDENT" | "PENDING_BUSINESS" | "PENDING_INDIVIDUAL"> = {
       STUDENT: "PENDING_STUDENT",
@@ -122,93 +115,96 @@ export async function POST(request: NextRequest) {
       INDIVIDUAL: "PENDING_INDIVIDUAL",
     };
 
-    // ── Create SellerProfile ──────────────────────────────────────
-    const sellerProfile = await prisma.sellerProfile.create({
-      data: {
-        userId,
-        handle: handle.toLowerCase(),
-        storeName,
-        bio: bio || null,
-        tagline: tagline || null,
-        phone: phone || null,
-        whatsappNumber: whatsappNumber || null,
-        campus: campus || null,
-        tier: tier as "STUDENT" | "BUSINESS" | "INDIVIDUAL",
-        status: statusMap[tier],
-        commissionRate: getCommissionRate(tier),
-        kycDocKeys: [],
-      },
-    });
+    try {
+      // ── Wrap post-signup DB writes in transaction ────────────────
+      const { sellerProfile, otpRequired } = await prisma.$transaction(async (tx) => {
+        // Create SellerProfile
+        const profile = await tx.sellerProfile.create({
+          data: {
+            userId,
+            handle: handle.toLowerCase(),
+            storeName,
+            bio: bio || null,
+            tagline: tagline || null,
+            phone: phone || null,
+            whatsappNumber: whatsappNumber || null,
+            campus: campus || null,
+            tier: tier as "STUDENT" | "BUSINESS" | "INDIVIDUAL",
+            status: statusMap[tier],
+            commissionRate: getCommissionRate(tier),
+            kycDocKeys: [],
+          },
+        });
 
-    // ── Student tier: generate and queue OTP ──────────────────────
-    let otpRequired = false;
-    if (tier === "STUDENT") {
-      const { raw, hash, expiresAt } = await generateSellerOTP();
+        // Student tier: generate and queue OTP
+        let otpReq = false;
+        if (tier === "STUDENT") {
+          const { raw, hash, expiresAt } = await generateSellerOTP();
 
-      // Store OTP in SellerOtp table (upserting to avoid duplicates/conflicts)
-      const db = prisma as unknown as {
-        sellerOtp: {
-          upsert: (args: {
-            where: { email: string };
+          // Store OTP in SellerOtp table
+          await tx.sellerOtp.upsert({
+            where: { email },
             create: {
-              email: string;
-              otpHash: string;
-              expiresAt: Date;
-              attempts: number;
-              isVerified: boolean;
-              isLocked: boolean;
-            };
+              email,
+              otpHash: hash,
+              expiresAt,
+              attempts: 0,
+              isVerified: false,
+              isLocked: false,
+            },
             update: {
-              otpHash: string;
-              expiresAt: Date;
-              attempts: number;
-              isVerified: boolean;
-              isLocked: boolean;
-            };
-          }) => Promise<unknown>;
-        };
-      };
-      await db.sellerOtp.upsert({
-        where: { email },
-        create: {
-          email,
-          otpHash: hash,
-          expiresAt,
-          attempts: 0,
-          isVerified: false,
-          isLocked: false,
-        },
-        update: {
-          otpHash: hash,
-          expiresAt,
-          attempts: 0,
-          isVerified: false,
-          isLocked: false,
-        },
+              otpHash: hash,
+              expiresAt,
+              attempts: 0,
+              isVerified: false,
+              isLocked: false,
+            },
+          });
+
+          // Queue OTP email via outbox
+          await queueEmail({
+            to: email,
+            subject: "U-Shop Seller Verification OTP",
+            jobType: "SELLER_OTP",
+            payload: { otp: raw, storeName, name },
+          }, tx);
+
+          otpReq = true;
+        }
+
+        return { sellerProfile: profile, otpRequired: otpReq };
       });
 
-      // Queue OTP email via outbox
-      await queueEmail({
-        to: email,
-        subject: "U-Shop Seller Verification OTP",
-        jobType: "SELLER_OTP",
-        payload: { otp: raw, storeName, name },
-      });
+      // Generate provisional onboarding token for initial KYC uploads
+      const onboardingToken = generateOnboardingToken(userId);
 
-      otpRequired = true;
+      return NextResponse.json(
+        {
+          userId,
+          profileId: sellerProfile.id,
+          otpRequired,
+          onboardingToken,
+          message: otpRequired
+            ? "Account created. Please verify your student email with the OTP sent to your inbox."
+            : "Account created. Please upload your KYC documents to complete registration.",
+        },
+        { status: 201 }
+      );
+    } catch (writeError: unknown) {
+      console.error("Seller registration write failure, cleaning up user:", writeError);
+
+      // Clean up the created auth user so they are not stranded
+      try {
+        await prisma.user.delete({
+          where: { id: userId },
+        });
+      } catch (cleanupError) {
+        console.error("Failed to clean up stranded user:", cleanupError);
+      }
+
+      const message = writeError instanceof Error ? writeError.message : "Internal server error";
+      return NextResponse.json({ error: message }, { status: 500 });
     }
-
-    return NextResponse.json(
-      {
-        userId,
-        profileId: sellerProfile.id,
-        otpRequired,
-        message: otpRequired
-          ? "Account created. Please verify your student email with the OTP sent to your inbox."
-          : "Account created. Please upload your KYC documents to complete registration.",
-      },
-      { status: 201 }
-    );
   } catch (error: unknown) {
     console.error("Seller registration error:", error);
     const message = error instanceof Error ? error.message : "Internal server error";

@@ -31,8 +31,12 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }) => {
-      const { sendVerificationEmail } = await import("@/lib/email");
-      await sendVerificationEmail({ to: user.email, url });
+      try {
+        const { sendVerificationEmail } = await import("@/lib/email");
+        await sendVerificationEmail({ to: user.email, url });
+      } catch (error) {
+        console.error("Failed to send verification email:", error);
+      }
     },
   },
 

@@ -3,12 +3,23 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { uploadKYCDocument } from "@/lib/s3";
 import { Prisma } from "../../../../generated/prisma";
+import { verifyOnboardingToken } from "@/lib/onboarding-token";
 
 export async function POST(request: NextRequest) {
   try {
     // ── Authenticate user ─────────────────────────────────────────
+    let userId: string | null = null;
     const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user) {
+    if (session?.user) {
+      userId = session.user.id;
+    } else {
+      const onboardingToken = request.headers.get("x-onboarding-token");
+      if (onboardingToken) {
+        userId = verifyOnboardingToken(onboardingToken);
+      }
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -42,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // ── Verify user has a SellerProfile ────────────────────────────
     const sellerProfile = await prisma.sellerProfile.findUnique({
-      where: { userId: session.user.id },
+      where: { userId },
     });
 
     if (!sellerProfile) {
@@ -63,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // ── Upload to private S3 ──────────────────────────────────────
     const buffer = Buffer.from(await file.arrayBuffer());
-    const s3Key = await uploadKYCDocument(buffer, file.type, session.user.id);
+    const s3Key = await uploadKYCDocument(buffer, file.type, userId);
 
     // ── Append S3 key to SellerProfile.kycDocKeys ─────────────────
     const existingKeys = (sellerProfile.kycDocKeys as string[]) || [];

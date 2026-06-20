@@ -70,6 +70,7 @@ export default function SellerRegisterPage() {
   // KYC
   const [kycFiles, setKycFiles] = useState<File[]>([]);
   const [uploadingKyc, setUploadingKyc] = useState(false);
+  const [onboardingToken, setOnboardingToken] = useState("");
 
   // General
   const [isLoading, setIsLoading] = useState(false);
@@ -164,16 +165,13 @@ export default function SellerRegisterPage() {
       // userId available as data.userId if needed later
 
       if (data.otpRequired) {
+        if (data.onboardingToken) {
+          setOnboardingToken(data.onboardingToken);
+        }
         setStep("otp");
       } else {
-        try {
-          await authClient.signIn.email({
-            email,
-            password,
-            rememberMe: false,
-          });
-        } catch (err) {
-          console.error("Auto-login failed:", err);
+        if (data.onboardingToken) {
+          setOnboardingToken(data.onboardingToken);
         }
         setStep("kyc");
       }
@@ -304,6 +302,9 @@ export default function SellerRegisterPage() {
 
         const res = await fetch("/api/seller/upload-kyc", {
           method: "POST",
+          headers: {
+            "x-onboarding-token": onboardingToken || "",
+          },
           body: formData,
         });
 
