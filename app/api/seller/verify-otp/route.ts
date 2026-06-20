@@ -145,12 +145,12 @@ export async function POST(request: NextRequest) {
       data: { isVerified: true },
     });
 
-    const user = await db.user.findUnique({
+    const user = (await db.user.findUnique({
       where: { email },
       include: { sellerProfile: true },
-    });
+    })) as { id: string; email: string; sellerProfile: { id: string } | null } | null;
 
-    if (user?.sellerProfile) {
+    if (user && user.sellerProfile) {
       await db.sellerProfile.update({
         where: { id: user.sellerProfile.id },
         data: { otpVerified: true },
