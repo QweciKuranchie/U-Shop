@@ -29,6 +29,9 @@ function buildPrismaClient() {
   // 2. Direct Driver Adapter (postgres:// or postgresql://)
   const pool = new Pool({
     connectionString: dbUrl || "postgres://placeholder:placeholder@localhost:5432/ushop",
+    ssl: dbUrl && (dbUrl.includes("rds.amazonaws.com") || dbUrl.includes("sslmode=require"))
+      ? { rejectUnauthorized: false }
+      : undefined,
   });
   const adapter = new PrismaPg(pool);
 
