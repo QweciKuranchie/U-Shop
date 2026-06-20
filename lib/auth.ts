@@ -49,6 +49,7 @@ export const auth = betterAuth({
     cookieCache: {
       enabled:    true,
       maxAge:     60 * 5,                 // Re-use cached session for 5 min
+      strategy:   "jwe",                  // Encrypt session cookie data
     },
   },
 
