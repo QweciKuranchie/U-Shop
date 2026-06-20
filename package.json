@@ -31,7 +31,7 @@
     "dotenv": "^16.4.5",
     "import-in-the-middle": "*",
     "lucide-react": "^0.456.0",
-    "next": "^15.1.6",
+    "next": "^15.5.19",
     "pg": "^8.11.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
