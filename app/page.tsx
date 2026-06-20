@@ -31,12 +31,11 @@ async function getFeaturedProducts() {
 }
 
 async function getActiveCategories() {
-  const products = await prisma.product.findMany({
+  const categories = await prisma.product.groupBy({
+    by: ["category"],
     where: { status: "ACTIVE" },
-    select: { category: true },
-    distinct: ["category"],
   });
-  return products.map((p) => p.category);
+  return categories.map((c) => c.category);
 }
 
 async function getActiveSellers() {
