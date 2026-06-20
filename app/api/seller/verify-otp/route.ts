@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
       attempts: number;
       isVerified: boolean;
       isLocked: boolean;
+      lockoutUntil: Date | null;
       createdAt: Date;
       updatedAt: Date;
     }
@@ -60,16 +61,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check expiry first
+    const lockoutUntilDate = sellerOtp.lockoutUntil ? new Date(sellerOtp.lockoutUntil) : null;
+
+    // Check lockout FIRST, even if expired or active
+    if (lockoutUntilDate && new Date() < lockoutUntilDate) {
+      return NextResponse.json(
+        {
+          verified: false,
+          reason: "OTP_LOCKED",
+          lockoutEndsAt: lockoutUntilDate.toISOString(),
+          message: `Too many failed attempts (${SELLER_OTP_MAX_ATTEMPTS} max). Please wait for the lockout to expire.`,
+        },
+        { status: 429 }
+      );
+    }
+
+    // Check expiry
     if (new Date() > sellerOtp.expiresAt) {
-      if (sellerOtp.isLocked || sellerOtp.attempts > 0) {
-        await db.sellerOtp.update({
-          where: { email },
-          data: {
-            attempts: 0,
-            isLocked: false,
-          },
-        });
+      // Only reset attempts/isLocked if there is no active lockout
+      if (!lockoutUntilDate || new Date() >= lockoutUntilDate) {
+        if (sellerOtp.isLocked || sellerOtp.attempts > 0 || sellerOtp.lockoutUntil) {
+          await db.sellerOtp.update({
+            where: { email },
+            data: {
+              attempts: 0,
+              isLocked: false,
+              lockoutUntil: null,
+            },
+          });
+        }
       }
       return NextResponse.json(
         {
@@ -81,14 +101,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check lockout (only if active / not expired)
+    // Check lockout based on attempts (backup in case lockoutUntil was not set yet)
     if (sellerOtp.isLocked || sellerOtp.attempts >= SELLER_OTP_MAX_ATTEMPTS) {
-      const lockoutEndsAt = new Date(sellerOtp.expiresAt.getTime());
+      // If attempts are exhausted but lockoutUntil is null, set it to 10 min
+      const finalLockout = lockoutUntilDate || new Date(Date.now() + 10 * 60 * 1000);
+      if (!sellerOtp.lockoutUntil) {
+        await db.sellerOtp.update({
+          where: { email },
+          data: {
+            isLocked: true,
+            lockoutUntil: finalLockout,
+          },
+        });
+      }
       return NextResponse.json(
         {
           verified: false,
           reason: "OTP_LOCKED",
-          lockoutEndsAt: lockoutEndsAt.toISOString(),
+          lockoutEndsAt: finalLockout.toISOString(),
           message: `Too many failed attempts (${SELLER_OTP_MAX_ATTEMPTS} max). Please wait for the lockout to expire.`,
         },
         { status: 429 }
@@ -100,28 +130,30 @@ export async function POST(request: NextRequest) {
       otp,
       sellerOtp.otpHash,
       sellerOtp.expiresAt,
-      sellerOtp.attempts
+      sellerOtp.attempts,
+      sellerOtp.lockoutUntil
     );
 
     if (!result.success) {
       const nextAttempts = sellerOtp.attempts + 1;
       const isLockedNow = nextAttempts >= SELLER_OTP_MAX_ATTEMPTS;
+      const newLockoutUntil = isLockedNow ? new Date(Date.now() + 10 * 60 * 1000) : null;
 
       await db.sellerOtp.update({
         where: { email },
         data: {
           attempts: nextAttempts,
           isLocked: isLockedNow,
+          lockoutUntil: newLockoutUntil,
         },
       });
 
       if (isLockedNow) {
-        const lockoutEndsAt = new Date(sellerOtp.expiresAt.getTime());
         return NextResponse.json(
           {
             verified: false,
             reason: "OTP_LOCKED",
-            lockoutEndsAt: lockoutEndsAt.toISOString(),
+            lockoutEndsAt: newLockoutUntil!.toISOString(),
             message: `Too many failed attempts (${SELLER_OTP_MAX_ATTEMPTS} max). Please wait for the lockout to expire.`,
           },
           { status: 429 }

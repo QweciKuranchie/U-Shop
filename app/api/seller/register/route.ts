@@ -151,14 +151,16 @@ export async function POST(request: NextRequest) {
               attempts: 0,
               isVerified: false,
               isLocked: false,
-            },
+              lockoutUntil: null,
+            } as any,
             update: {
               otpHash: hash,
               expiresAt,
               attempts: 0,
               isVerified: false,
               isLocked: false,
-            },
+              lockoutUntil: null,
+            } as any,
           });
 
           // Queue OTP email via outbox
@@ -200,6 +202,25 @@ export async function POST(request: NextRequest) {
         });
       } catch (cleanupError) {
         console.error("Failed to clean up stranded user:", cleanupError);
+      }
+
+      // Detect unique constraint violation on handle (P2002)
+      if (
+        writeError &&
+        typeof writeError === "object" &&
+        "code" in writeError &&
+        (writeError as any).code === "P2002"
+      ) {
+        const target = (writeError as any).meta?.target;
+        if (
+          (Array.isArray(target) && target.includes("handle")) ||
+          (typeof target === "string" && target.includes("handle"))
+        ) {
+          return NextResponse.json(
+            { error: "Handle is already taken" },
+            { status: 409 }
+          );
+        }
       }
 
       const message = writeError instanceof Error ? writeError.message : "Internal server error";

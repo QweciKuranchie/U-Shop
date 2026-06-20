@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
         status: {
           in: ["PENDING_STUDENT", "PENDING_BUSINESS", "PENDING_INDIVIDUAL"],
         },
-      },
+        applicationSubmitted: true,
+      } as any,
       include: {
         user: {
           select: { name: true, email: true },

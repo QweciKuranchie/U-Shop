@@ -41,6 +41,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Validate document count ───────────────────────────────────
+    if (kycDocKeys.length > 3) {
+      return NextResponse.json(
+        { error: "Maximum of 3 KYC documents allowed" },
+        { status: 400 }
+      );
+    }
+
+    // ── Freshness check: at least one new document key ────────────
+    const existingKeys = (sellerProfile.kycDocKeys as string[]) || [];
+    const existingSet = new Set(existingKeys);
+    const hasNewDocument = kycDocKeys.some((key: string) => !existingSet.has(key));
+
+    if (!hasNewDocument) {
+      return NextResponse.json(
+        { error: "Resubmission must include at least one new document. Please upload new KYC documents." },
+        { status: 400 }
+      );
+    }
+
     // ── Determine pending status based on tier ────────────────────
     const statusMap: Record<string, "PENDING_STUDENT" | "PENDING_BUSINESS" | "PENDING_INDIVIDUAL"> = {
       STUDENT: "PENDING_STUDENT",
@@ -57,7 +77,8 @@ export async function POST(request: NextRequest) {
           kycDocKeys: kycDocKeys as unknown as Prisma.InputJsonValue,
           status: newStatus,
           rejectionReason: null,
-        },
+          applicationSubmitted: true,
+        } as any,
       });
 
       // ── Queue admin notification email ────────────────────────────

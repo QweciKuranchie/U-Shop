@@ -39,6 +39,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Validate KYC completeness before approval ─────────────────
+    const profileData = profile as unknown as {
+      applicationSubmitted: boolean;
+      kycDocKeys: string[];
+      userId: string;
+    };
+
+    if (!profileData.applicationSubmitted) {
+      return NextResponse.json(
+        { error: "Cannot approve: seller has not submitted their application" },
+        { status: 400 }
+      );
+    }
+
+    const kycKeys = profileData.kycDocKeys || [];
+    if (kycKeys.length === 0) {
+      return NextResponse.json(
+        { error: "Cannot approve: no KYC documents uploaded" },
+        { status: 400 }
+      );
+    }
+
+    // Validate document keys belong to the correct user prefix
+    const expectedPrefix = `kyc/${profileData.userId}/`;
+    const hasValidKeys = kycKeys.every((key: string) => key.startsWith(expectedPrefix));
+    if (!hasValidKeys) {
+      return NextResponse.json(
+        { error: "Cannot approve: invalid KYC document keys detected" },
+        { status: 400 }
+      );
+    }
+
     // ── Commission rate based on tier ────────────────────────────
     const commissionRate = getCommissionRate(profile.tier);
 

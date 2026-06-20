@@ -173,6 +173,16 @@ export default function SellerRegisterPage() {
         if (data.onboardingToken) {
           setOnboardingToken(data.onboardingToken);
         }
+        // Non-student tiers: establish browser session immediately
+        try {
+          await authClient.signIn.email({
+            email,
+            password,
+            rememberMe: false,
+          });
+        } catch (err) {
+          console.error("Auto-login after registration failed:", err);
+        }
         setStep("kyc");
       }
     } catch {
@@ -266,6 +276,11 @@ export default function SellerRegisterPage() {
         setLockoutCountdown(0);
         setAttemptsRemaining(3);
         setOtpError("A new OTP code has been sent to your email.");
+      } else if (res.status === 429 && data.lockoutEndsAt) {
+        // Backend refused resend due to active lockout
+        setOtpLocked(true);
+        setLockoutEndsAt(new Date(data.lockoutEndsAt));
+        setOtpError(data.error || "Lockout is active. Please wait.");
       } else {
         setOtpError(data.error || "Failed to resend OTP");
       }
@@ -316,6 +331,22 @@ export default function SellerRegisterPage() {
         }
 
         await res.json(); // consume response
+      }
+
+      // ── Finalize application submission ─────────────────────────
+      const submitRes = await fetch("/api/seller/submit-application", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-onboarding-token": onboardingToken || "",
+        },
+      });
+
+      if (!submitRes.ok) {
+        const submitData = await submitRes.json();
+        setErrorMsg(submitData.error || "Failed to finalize application");
+        setUploadingKyc(false);
+        return;
       }
 
       setStep("done");
@@ -580,10 +611,10 @@ export default function SellerRegisterPage() {
                 <button
                   type="button"
                   onClick={handleResendOtp}
-                  disabled={isLoading}
+                  disabled={isLoading || lockoutCountdown > 0}
                   className="text-xs text-brand-purple hover:text-brand-pink transition-colors font-medium underline disabled:opacity-50"
                 >
-                  {isLoading ? "Resending..." : "Resend OTP Code"}
+                  {isLoading ? "Resending..." : lockoutCountdown > 0 ? "Wait for lockout to expire" : "Resend OTP Code"}
                 </button>
               </div>
             ) : (
