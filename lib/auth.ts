@@ -9,6 +9,8 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  appName: "U-Shop",
+
   trustedOrigins: [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -32,7 +34,7 @@ export const auth = betterAuth({
   // ── Email verification via Resend ────────────────────────────────
   emailVerification: {
     sendOnSignUp: true,
-    sendVerificationEmail: async ({ user, url }) => {
+    sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
       try {
         const { sendVerificationEmail } = await import("@/lib/email");
         await sendVerificationEmail({ to: user.email, url });
