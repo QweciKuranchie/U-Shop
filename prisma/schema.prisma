@@ -228,7 +228,7 @@ model Product {
 
   orders Order[]
 
-  @@index([status])
+  @@index([status, createdAt(sort: Desc)])
   @@index([category])
   @@index([sellerId])
   @@map("products")
