@@ -88,6 +88,10 @@ export const auth = betterAuth({
     max:     10,                          // 10 auth attempts per window per IP
   },
 
+  experimental: {
+    joins: true,
+  },
+
   plugins: [
     dash(),
   ],
