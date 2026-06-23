@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
           status: newStatus,
           rejectionReason: null,
           applicationSubmitted: true,
-        } as any,
+        } as unknown as Parameters<typeof tx.sellerProfile.update>[0]["data"],
       });
 
       // ── Queue admin notification email ────────────────────────────

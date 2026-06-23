@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
         isVerified: false,
         isLocked: false,
         lockoutUntil: null,
-      } as any,
+      } as unknown as Parameters<typeof db.sellerOtp.create>[0]["data"],
       update: {
         otpHash: hash,
         expiresAt,
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         isVerified: false,
         isLocked: false,
         lockoutUntil: null,
-      } as any,
+      } as unknown as Parameters<typeof db.sellerOtp.update>[0]["data"],
     });
 
     // ── Queue a fresh seller OTP email ───────────────────────────────

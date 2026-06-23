@@ -87,9 +87,9 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Mark application as submitted ─────────────────────────────
-    await (prisma.sellerProfile as any).update({
+    await prisma.sellerProfile.update({
       where: { id: profile.id },
-      data: { applicationSubmitted: true },
+      data: { applicationSubmitted: true } as unknown as Parameters<typeof prisma.sellerProfile.update>[0]["data"],
     });
 
     return NextResponse.json({

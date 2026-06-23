@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole, AuthError } from "@/lib/auth-guards";
-import { computeOrderPricing, getCommissionRate } from "@/lib/pricing";
+import { computeOrderPricing } from "@/lib/pricing";
 import { Prisma } from "../../../generated/prisma";
 
 // ── Allowed categories and conditions (match Prisma enums) ────────

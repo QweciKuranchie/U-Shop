@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
           in: ["PENDING_STUDENT", "PENDING_BUSINESS", "PENDING_INDIVIDUAL"],
         },
         applicationSubmitted: true,
-      } as any,
+      } as unknown as Parameters<typeof prisma.sellerProfile.findMany>[0]["where"],
       include: {
         user: {
           select: { name: true, email: true },
