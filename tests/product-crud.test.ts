@@ -30,7 +30,7 @@ describe("Client-side gross-up preview", () => {
     });
 
     // Client-side (JS float) should match server-side (Decimal) to 2 decimal places
-    expect(clientSide).toBe(serverSide.listingPrice.toString());
+    expect(clientSide).toBe(serverSide.listingPrice.toFixed(2));
   });
 
   it("should match computeOrderPricing listingPrice for 8% commission (Business tier)", () => {
@@ -45,7 +45,7 @@ describe("Client-side gross-up preview", () => {
       deliveryFee: new Prisma.Decimal("0"),
     });
 
-    expect(clientSide).toBe(serverSide.listingPrice.toString());
+    expect(clientSide).toBe(serverSide.listingPrice.toFixed(2));
   });
 
   it("should match for a large vendor price at 5%", () => {
@@ -60,7 +60,7 @@ describe("Client-side gross-up preview", () => {
       deliveryFee: new Prisma.Decimal("0"),
     });
 
-    expect(clientSide).toBe(serverSide.listingPrice.toString());
+    expect(clientSide).toBe(serverSide.listingPrice.toFixed(2));
   });
 
   it("should match for a small vendor price at 8%", () => {
@@ -75,7 +75,7 @@ describe("Client-side gross-up preview", () => {
       deliveryFee: new Prisma.Decimal("0"),
     });
 
-    expect(clientSide).toBe(serverSide.listingPrice.toString());
+    expect(clientSide).toBe(serverSide.listingPrice.toFixed(2));
   });
 
   it("should return '0.00' for zero vendor price", () => {
