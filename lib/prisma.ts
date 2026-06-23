@@ -36,10 +36,10 @@ function buildPrismaClient() {
         accelerateUrl: dbUrl,
       }).$extends(withAccelerate());
       if (process.env.NODE_ENV !== "test") {
-        (client as any).$executeRawUnsafe(`ALTER TABLE "seller_otps" ADD COLUMN IF NOT EXISTS "lockoutUntil" TIMESTAMP(3);`)
-          .catch((err: any) => console.error("Dynamic migration (seller_otps) failed:", err));
-        (client as any).$executeRawUnsafe(`ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "applicationSubmitted" BOOLEAN NOT NULL DEFAULT false;`)
-          .catch((err: any) => console.error("Dynamic migration (seller_profiles) failed:", err));
+        (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`ALTER TABLE "seller_otps" ADD COLUMN IF NOT EXISTS "lockoutUntil" TIMESTAMP(3);`)
+          .catch((err: unknown) => console.error("Dynamic migration (seller_otps) failed:", err));
+        (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "applicationSubmitted" BOOLEAN NOT NULL DEFAULT false;`)
+          .catch((err: unknown) => console.error("Dynamic migration (seller_profiles) failed:", err));
       }
       return client as unknown as PrismaClient;
     } else {
@@ -69,10 +69,10 @@ function buildPrismaClient() {
     adapter,
   });
   if (process.env.NODE_ENV !== "test") {
-    (client as any).$executeRawUnsafe(`ALTER TABLE "seller_otps" ADD COLUMN IF NOT EXISTS "lockoutUntil" TIMESTAMP(3);`)
-      .catch((err: any) => console.error("Dynamic migration (seller_otps) failed:", err));
-    (client as any).$executeRawUnsafe(`ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "applicationSubmitted" BOOLEAN NOT NULL DEFAULT false;`)
-      .catch((err: any) => console.error("Dynamic migration (seller_profiles) failed:", err));
+    (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`ALTER TABLE "seller_otps" ADD COLUMN IF NOT EXISTS "lockoutUntil" TIMESTAMP(3);`)
+      .catch((err: unknown) => console.error("Dynamic migration (seller_otps) failed:", err));
+    (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "applicationSubmitted" BOOLEAN NOT NULL DEFAULT false;`)
+      .catch((err: unknown) => console.error("Dynamic migration (seller_profiles) failed:", err));
   }
   return client;
 }

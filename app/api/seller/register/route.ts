@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
               isVerified: false,
               isLocked: false,
               lockoutUntil: null,
-            } as any,
+            } as unknown as Parameters<typeof tx.sellerOtp.create>[0]["data"],
             update: {
               otpHash: hash,
               expiresAt,
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
               isVerified: false,
               isLocked: false,
               lockoutUntil: null,
-            } as any,
+            } as unknown as Parameters<typeof tx.sellerOtp.update>[0]["data"],
           });
 
           // Queue OTP email via outbox
@@ -205,13 +205,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Detect unique constraint violation on handle (P2002)
+      const err = writeError as { code?: string; meta?: { target?: string | string[] } };
       if (
-        writeError &&
-        typeof writeError === "object" &&
-        "code" in writeError &&
-        (writeError as any).code === "P2002"
+        err &&
+        typeof err === "object" &&
+        err.code === "P2002"
       ) {
-        const target = (writeError as any).meta?.target;
+        const target = err.meta?.target;
         if (
           (Array.isArray(target) && target.includes("handle")) ||
           (typeof target === "string" && target.includes("handle"))
