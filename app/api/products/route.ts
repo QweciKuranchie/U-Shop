@@ -127,11 +127,15 @@ export async function GET(request: NextRequest) {
 
     const sellerProfile = await prisma.sellerProfile.findUnique({
       where: { userId: user.id },
-      select: { id: true, commissionRate: true, tier: true, campus: true, storeName: true, handle: true },
+      select: { id: true, commissionRate: true, tier: true, campus: true, storeName: true, handle: true, status: true },
     });
 
     if (!sellerProfile) {
       return NextResponse.json({ error: "No seller profile found" }, { status: 404 });
+    }
+
+    if (sellerProfile.status !== "ACTIVE") {
+      return NextResponse.json({ error: "Seller account is not active" }, { status: 403 });
     }
 
     const products = await prisma.product.findMany({
