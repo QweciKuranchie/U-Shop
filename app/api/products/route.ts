@@ -58,6 +58,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Seller account is not active" }, { status: 403 });
     }
 
+    // ── Validate image keys belong to this seller's upload prefix ──
+    const productImagePrefix = `products/${sellerProfile.id}/`;
+    for (const key of images) {
+      if (typeof key !== "string" || !key.startsWith(productImagePrefix)) {
+        return NextResponse.json(
+          { error: "Invalid image key: all images must belong to your seller account" },
+          { status: 400 }
+        );
+      }
+    }
+
     // ── Compute listing price server-side ──────────────────────────
     const vendorPriceDecimal = new Prisma.Decimal(String(vendorPrice));
     const commissionRateDecimal = new Prisma.Decimal(String(sellerProfile.commissionRate));
@@ -116,7 +127,7 @@ export async function GET(request: NextRequest) {
 
     const sellerProfile = await prisma.sellerProfile.findUnique({
       where: { userId: user.id },
-      select: { id: true, commissionRate: true, tier: true, campus: true, storeName: true },
+      select: { id: true, commissionRate: true, tier: true, campus: true, storeName: true, handle: true },
     });
 
     if (!sellerProfile) {
@@ -161,6 +172,7 @@ export async function GET(request: NextRequest) {
         tier: sellerProfile.tier,
         campus: sellerProfile.campus,
         storeName: sellerProfile.storeName,
+        handle: sellerProfile.handle,
       },
     });
   } catch (error: unknown) {

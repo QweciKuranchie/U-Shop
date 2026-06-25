@@ -44,8 +44,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden: you do not own this product" }, { status: 403 });
     }
 
+    if (product.status === "SOLD") {
+      return NextResponse.json({ error: "Cannot edit a sold product" }, { status: 400 });
+    }
+
     if (product.status === "DELETED") {
       return NextResponse.json({ error: "Cannot edit a deleted product" }, { status: 400 });
+    }
+
+    // ── Check if any orders exist for this product ──────────────────
+    const orderCount = await prisma.order.count({
+      where: { productId: id },
+    });
+    if (orderCount > 0) {
+      return NextResponse.json({ error: "Cannot modify a product with existing orders" }, { status: 400 });
     }
 
     // ── Parse update fields ───────────────────────────────────────
@@ -89,6 +101,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
       if (body.imageS3Keys.length > 5) {
         return NextResponse.json({ error: "Maximum of 5 images allowed" }, { status: 400 });
+      }
+      // Validate image keys belong to this seller's upload prefix
+      const productImagePrefix = `products/${sellerProfile.id}/`;
+      for (const key of body.imageS3Keys) {
+        if (typeof key !== "string" || !key.startsWith(productImagePrefix)) {
+          return NextResponse.json(
+            { error: "Invalid image key: all images must belong to your seller account" },
+            { status: 400 }
+          );
+        }
       }
       updateData.imageS3Keys = body.imageS3Keys as unknown as Prisma.InputJsonValue;
     }
@@ -183,8 +205,20 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden: you do not own this product" }, { status: 403 });
     }
 
+    if (product.status === "SOLD") {
+      return NextResponse.json({ error: "Cannot delete a sold product" }, { status: 400 });
+    }
+
     if (product.status === "DELETED") {
       return NextResponse.json({ error: "Product is already deleted" }, { status: 400 });
+    }
+
+    // ── Check if any orders exist for this product ──────────────────
+    const orderCount = await prisma.order.count({
+      where: { productId: id },
+    });
+    if (orderCount > 0) {
+      return NextResponse.json({ error: "Cannot delete a product with existing orders" }, { status: 400 });
     }
 
     // ── Soft-delete: status = DELETED, set deletedAt ──────────────

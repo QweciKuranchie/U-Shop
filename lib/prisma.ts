@@ -39,7 +39,10 @@ function buildPrismaClient() {
         (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`ALTER TABLE "seller_otps" ADD COLUMN IF NOT EXISTS "lockoutUntil" TIMESTAMP(3);`)
           .catch((err: unknown) => console.error("Dynamic migration (seller_otps) failed:", err));
         (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "applicationSubmitted" BOOLEAN NOT NULL DEFAULT false;`)
-          .catch((err: unknown) => console.error("Dynamic migration (seller_profiles) failed:", err));
+          .then(() => {
+            return (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`UPDATE "seller_profiles" SET "applicationSubmitted" = true WHERE "applicationSubmitted" = false AND "status" IN ('PENDING_STUDENT', 'PENDING_BUSINESS', 'PENDING_INDIVIDUAL') AND "kycDocKeys"::text <> '[]';`);
+          })
+          .catch((err: unknown) => console.error("Dynamic migration (seller_profiles/backfill) failed:", err));
       }
       return client as unknown as PrismaClient;
     } else {
@@ -72,7 +75,10 @@ function buildPrismaClient() {
     (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`ALTER TABLE "seller_otps" ADD COLUMN IF NOT EXISTS "lockoutUntil" TIMESTAMP(3);`)
       .catch((err: unknown) => console.error("Dynamic migration (seller_otps) failed:", err));
     (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`ALTER TABLE "seller_profiles" ADD COLUMN IF NOT EXISTS "applicationSubmitted" BOOLEAN NOT NULL DEFAULT false;`)
-      .catch((err: unknown) => console.error("Dynamic migration (seller_profiles) failed:", err));
+      .then(() => {
+        return (client as unknown as { $executeRawUnsafe: (q: string) => Promise<unknown> }).$executeRawUnsafe(`UPDATE "seller_profiles" SET "applicationSubmitted" = true WHERE "applicationSubmitted" = false AND "status" IN ('PENDING_STUDENT', 'PENDING_BUSINESS', 'PENDING_INDIVIDUAL') AND "kycDocKeys"::text <> '[]';`);
+      })
+      .catch((err: unknown) => console.error("Dynamic migration (seller_profiles/backfill) failed:", err));
   }
   return client;
 }

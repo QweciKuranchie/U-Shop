@@ -298,7 +298,17 @@ export default function SellerRegisterPage() {
       const validTypes = ["image/jpeg", "image/png", "image/webp"];
       return validTypes.includes(f.type) && f.size <= 5 * 1024 * 1024;
     });
-    setKycFiles((prev) => [...prev, ...validFiles]);
+    setKycFiles((prev) => {
+      const remaining = 3 - prev.length;
+      if (remaining <= 0) {
+        setErrorMsg("Maximum of 3 KYC documents allowed.");
+        return prev;
+      }
+      if (validFiles.length > remaining) {
+        setErrorMsg(`Only ${remaining} more document${remaining !== 1 ? "s" : ""} can be added (max 3).`);
+      }
+      return [...prev, ...validFiles.slice(0, remaining)];
+    });
   }
 
   function removeFile(index: number) {
@@ -307,6 +317,10 @@ export default function SellerRegisterPage() {
 
   async function handleKycUpload() {
     if (kycFiles.length === 0) return;
+    if (kycFiles.length > 3) {
+      setErrorMsg("Maximum of 3 KYC documents allowed. Please remove extras before submitting.");
+      return;
+    }
     setUploadingKyc(true);
     setErrorMsg("");
 
