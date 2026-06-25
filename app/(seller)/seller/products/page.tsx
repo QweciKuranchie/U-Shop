@@ -6,11 +6,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSeller } from "../SellerContext";
 
-const S3_BASE_URL = `https://${process.env.NEXT_PUBLIC_S3_PRODUCT_BUCKET || "ushop-product-images-01"}.s3.${process.env.NEXT_PUBLIC_AWS_REGION || "us-east-1"}.amazonaws.com`;
-
 export default function ProductsListPage() {
   const router = useRouter();
-  const { products, loading, error, setProducts, setError } = useSeller();
+  const { products, loading, error, setProducts, setError, s3BaseUrl } = useSeller();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(productId: string) {
@@ -87,7 +85,7 @@ export default function ProductsListPage() {
             <tbody className="divide-y divide-white/5 text-sm">
               {products.map((item) => {
                 const imageUrl = item.imageS3Keys.length > 0
-                  ? `${S3_BASE_URL}/${item.imageS3Keys[0]}`
+                  ? `${s3BaseUrl}/${item.imageS3Keys[0]}`
                   : null;
                 const isSold = item.status === "SOLD";
 

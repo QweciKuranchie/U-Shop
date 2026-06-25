@@ -49,7 +49,7 @@ const CONDITIONS = [
   { value: "FAIR", label: "Fair" },
 ];
 
-const S3_BASE_URL = `https://${process.env.NEXT_PUBLIC_S3_PRODUCT_BUCKET || "ushop-product-images-01"}.s3.${process.env.NEXT_PUBLIC_AWS_REGION || "us-east-1"}.amazonaws.com`;
+
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
 
@@ -61,7 +61,7 @@ function computeGrossUp(vendorPrice: number, commissionRate: number): string {
 
 export default function ProductForm({ product }: ProductFormProps) {
   const router = useRouter();
-  const { seller, fetchData } = useSeller();
+  const { seller, fetchData, s3BaseUrl } = useSeller();
 
   const [formTitle, setFormTitle] = useState(product?.title || "");
   const [formDescription, setFormDescription] = useState(product?.description || "");
@@ -71,7 +71,7 @@ export default function ProductForm({ product }: ProductFormProps) {
   const [formImages, setFormImages] = useState<UploadingImage[]>(
     product?.imageS3Keys.map((key) => ({
       file: new File([], "existing"),
-      preview: `${S3_BASE_URL}/${key}`,
+      preview: `${s3BaseUrl}/${key}`,
       progress: 100,
       s3Key: key,
     })) || []

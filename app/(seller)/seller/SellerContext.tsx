@@ -28,6 +28,7 @@ export interface SellerInfo {
 interface SellerContextType {
   seller: SellerInfo | null;
   products: ProductItem[];
+  s3BaseUrl: string;
   loading: boolean;
   error: string;
   fetchData: () => Promise<void>;
@@ -40,6 +41,7 @@ const SellerContext = createContext<SellerContextType | undefined>(undefined);
 export function SellerProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [seller, setSeller] = useState<SellerInfo | null>(null);
+  const [s3BaseUrl, setS3BaseUrl] = useState("https://ushop-product-images-01.s3.us-east-1.amazonaws.com");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -55,6 +57,9 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       setProducts(data.products);
       setSeller(data.seller);
+      if (data.s3BaseUrl) {
+        setS3BaseUrl(data.s3BaseUrl);
+      }
     } catch {
       setError("Network error loading data");
     } finally {
@@ -67,7 +72,7 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
   }, [fetchData]);
 
   return (
-    <SellerContext.Provider value={{ seller, products, loading, error, fetchData, setProducts, setError }}>
+    <SellerContext.Provider value={{ seller, products, s3BaseUrl, loading, error, fetchData, setProducts, setError }}>
       {children}
     </SellerContext.Provider>
   );

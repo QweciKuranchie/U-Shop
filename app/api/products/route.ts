@@ -168,6 +168,14 @@ export async function GET(request: NextRequest) {
       commissionRate: p.commissionRate.toString(),
     }));
 
+    const s3BaseUrl = `https://${
+      process.env.S3_PRODUCT_BUCKET ||
+      process.env.AWS_S3_PRODUCT_IMAGES_BUCKET ||
+      "ushop-product-images-01"
+    }.s3.${
+      (process.env.AWS_REGION || "us-east-1").replace(/^.*\s/, "")
+    }.amazonaws.com`;
+
     return NextResponse.json({
       products: serialized,
       seller: {
@@ -178,6 +186,7 @@ export async function GET(request: NextRequest) {
         storeName: sellerProfile.storeName,
         handle: sellerProfile.handle,
       },
+      s3BaseUrl,
     });
   } catch (error: unknown) {
     if (error instanceof AuthError) {
