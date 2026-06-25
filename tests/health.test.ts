@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "../app/api/health/route";
-import prisma from "../lib/prisma";
+import { prisma } from "../lib/prisma";
 
 vi.mock("../lib/prisma", () => ({
-  default: {
+  prisma: {
     $queryRaw: vi.fn(),
   },
 }));

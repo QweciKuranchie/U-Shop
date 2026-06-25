@@ -104,17 +104,22 @@ export async function verifySellerOTP(
   submitted: string,
   storedHash: string,
   expiresAt: Date,
-  attempts: number
+  attempts: number,
+  lockoutUntil?: Date | null
 ): Promise<
   | { success: true }
   | { success: false; reason: "OTP_EXPIRED" | "OTP_MISMATCH" | "OTP_LOCKED" }
 > {
-  if (new Date() > expiresAt) {
-    return { success: false, reason: "OTP_EXPIRED" };
+  if (lockoutUntil && new Date() < lockoutUntil) {
+    return { success: false, reason: "OTP_LOCKED" };
   }
 
   if (attempts >= SELLER_OTP_MAX_ATTEMPTS) {
     return { success: false, reason: "OTP_LOCKED" };
+  }
+
+  if (new Date() > expiresAt) {
+    return { success: false, reason: "OTP_EXPIRED" };
   }
 
   const matches = await bcrypt.compare(submitted, storedHash);
