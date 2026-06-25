@@ -23,11 +23,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // ── Fetch seller profile ──────────────────────────────────────
     const sellerProfile = await prisma.sellerProfile.findUnique({
       where: { userId: user.id },
-      select: { id: true, commissionRate: true },
+      select: { id: true, commissionRate: true, status: true },
     });
 
     if (!sellerProfile) {
       return NextResponse.json({ error: "No seller profile found" }, { status: 404 });
+    }
+
+    if (sellerProfile.status !== "ACTIVE") {
+      return NextResponse.json({ error: "Seller account is not active" }, { status: 403 });
     }
 
     // ── Fetch product and verify ownership ────────────────────────
@@ -184,11 +188,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // ── Fetch seller profile ──────────────────────────────────────
     const sellerProfile = await prisma.sellerProfile.findUnique({
       where: { userId: user.id },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
     if (!sellerProfile) {
       return NextResponse.json({ error: "No seller profile found" }, { status: 404 });
+    }
+
+    if (sellerProfile.status !== "ACTIVE") {
+      return NextResponse.json({ error: "Seller account is not active" }, { status: 403 });
     }
 
     // ── Fetch product and verify ownership ────────────────────────

@@ -15,9 +15,21 @@ export default async function SellerLayout({
   try {
     const reqHeaders = await headers();
 
-    // Try seller role first (normal path)
     try {
       await requireRole(reqHeaders, "seller");
+
+      // Verify the seller profile status is ACTIVE (suspended/pending/rejected should not access portal)
+      const session = await auth.api.getSession({ headers: reqHeaders });
+      if (session?.user) {
+        const profile = await prisma.sellerProfile.findUnique({
+          where: { userId: session.user.id },
+          select: { status: true },
+        });
+        if (!profile || profile.status !== "ACTIVE") {
+          redirect("/unauthorized");
+        }
+      }
+
       return <>{children}</>;
     } catch (sellerError) {
       if (isRedirectError(sellerError)) {
