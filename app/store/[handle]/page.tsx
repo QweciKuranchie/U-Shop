@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import Image from "next/image";
 import Logo from "@/components/Logo";
 
 interface Props {
   params: Promise<{ handle: string }>;
 }
+
+const S3_BASE_URL = `https://${process.env.S3_PRODUCT_BUCKET || process.env.AWS_S3_PRODUCT_IMAGES_BUCKET || "ushop-product-images-01"}.s3.${(process.env.AWS_REGION || "us-east-1").replace(/^.*\s/, "")}.amazonaws.com`;
 
 export default async function StorefrontPage({ params }: Props) {
   const { handle } = await params;
@@ -143,35 +146,52 @@ export default async function StorefrontPage({ params }: Props) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="group bg-slate-900/30 border border-white/5 rounded-2xl overflow-hidden hover:border-brand-purple/40 hover:shadow-xl hover:shadow-brand-purple/5 transition-all duration-300"
-              >
-                <div className="h-40 bg-slate-900 flex items-center justify-center">
-                  <span className="text-slate-600 text-xs uppercase tracking-widest">
-                    {product.category}
-                  </span>
-                </div>
+            {products.map((product) => {
+              const imageKeys = product.imageS3Keys as string[];
+              const hasImage = imageKeys.length > 0;
+              const imageUrl = hasImage ? `${S3_BASE_URL}/${imageKeys[0]}` : null;
 
-                <div className="p-5">
-                  <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-1 block">
-                    {product.condition.replace("_", " ")}
-                  </span>
-                  <h3 className="font-display font-bold text-base text-white line-clamp-1 mb-3">
-                    {product.title}
-                  </h3>
-                  <div className="flex items-end justify-between pt-2 border-t border-white/5">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block mb-0.5">Price</span>
-                      <span className="font-display font-black text-lg text-white">
-                        GH₵ {Number(product.listingPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              return (
+                <div
+                  key={product.id}
+                  className="group bg-slate-900/30 border border-white/5 rounded-2xl overflow-hidden hover:border-brand-purple/40 hover:shadow-xl hover:shadow-brand-purple/5 transition-all duration-300"
+                >
+                  <div className="h-48 bg-slate-900 relative flex items-center justify-center overflow-hidden">
+                    {imageUrl ? (
+                      <Image
+                        src={imageUrl}
+                        alt={product.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="text-slate-600 text-xs uppercase tracking-widest">
+                        {product.category}
                       </span>
+                    )}
+                  </div>
+
+                  <div className="p-5">
+                    <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-1 block">
+                      {product.condition.replace("_", " ")}
+                    </span>
+                    <h3 className="font-display font-bold text-base text-white line-clamp-1 mb-3">
+                      {product.title}
+                    </h3>
+                    <div className="flex items-end justify-between pt-2 border-t border-white/5">
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase block mb-0.5">Price</span>
+                        <span className="font-display font-black text-lg text-white">
+                          GH₵ {Number(product.listingPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

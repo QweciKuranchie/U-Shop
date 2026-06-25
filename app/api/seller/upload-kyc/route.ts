@@ -73,11 +73,20 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Upload to private S3 ──────────────────────────────────────
+    const existingKeys = (sellerProfile.kycDocKeys as string[]) || [];
+
+    // ── Enforce 3-document cap before uploading ───────────────────
+    if (existingKeys.length >= 3) {
+      return NextResponse.json(
+        { error: "Maximum of 3 KYC documents allowed. Please remove an existing document before uploading more." },
+        { status: 400 }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const s3Key = await uploadKYCDocument(buffer, file.type, userId);
 
     // ── Append S3 key to SellerProfile.kycDocKeys ─────────────────
-    const existingKeys = (sellerProfile.kycDocKeys as string[]) || [];
     await prisma.sellerProfile.update({
       where: { id: sellerProfile.id },
       data: {

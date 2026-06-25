@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
         status: {
           in: ["PENDING_STUDENT", "PENDING_BUSINESS", "PENDING_INDIVIDUAL"],
         },
-      },
+        applicationSubmitted: true,
+      } as unknown as NonNullable<Parameters<typeof prisma.sellerProfile.findMany>[0]>["where"],
       include: {
         user: {
           select: { name: true, email: true },

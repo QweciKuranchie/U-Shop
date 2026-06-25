@@ -101,6 +101,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Check if there is an active lockout ───────────────────────────
+    const existingOtp = await prisma.sellerOtp.findUnique({
+      where: { email },
+    });
+
+    if (existingOtp) {
+      const lockoutUntilDate = existingOtp.lockoutUntil ? new Date(existingOtp.lockoutUntil) : null;
+      if (lockoutUntilDate && new Date() < lockoutUntilDate) {
+        return NextResponse.json(
+          {
+            error: "Too many failed attempts. Please wait for the lockout to expire.",
+            lockoutEndsAt: lockoutUntilDate.toISOString(),
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     // ── Generate fresh OTP ───────────────────────────────────────────
     const { raw, hash, expiresAt } = await generateSellerOTP();
 
@@ -114,14 +132,16 @@ export async function POST(request: NextRequest) {
         attempts: 0,
         isVerified: false,
         isLocked: false,
-      },
+        lockoutUntil: null,
+      } as Parameters<typeof db.sellerOtp.upsert>[0]["create"],
       update: {
         otpHash: hash,
         expiresAt,
         attempts: 0,
         isVerified: false,
         isLocked: false,
-      },
+        lockoutUntil: null,
+      } as Parameters<typeof db.sellerOtp.upsert>[0]["update"],
     });
 
     // ── Queue a fresh seller OTP email ───────────────────────────────
