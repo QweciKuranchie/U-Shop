@@ -1,7 +1,12 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import Logo from "@/components/Logo";
+import SearchHero from "@/components/SearchHero";
 import { prisma } from "@/lib/prisma";
+
+const S3_BASE_URL = `https://${process.env.S3_PRODUCT_BUCKET || process.env.AWS_S3_PRODUCT_IMAGES_BUCKET || "ushop-product-images-01"}.s3.${(process.env.AWS_REGION || "us-east-1").replace(/^.*\s/, "")}.amazonaws.com`;
+
 
 // Prevent static prerendering — homepage fetches live product data
 export const dynamic = "force-dynamic";
@@ -162,24 +167,7 @@ export default async function Home() {
             </p>
 
             {/* Search Bar */}
-            <div className="flex gap-3 max-w-lg">
-              <div className="flex-1 relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder='Search "MacBook Pro", "AirPods"...'
-                  className="w-full bg-slate-900/60 border border-white/10 focus:border-brand-purple/40 rounded-xl pl-10 pr-4 py-3.5 text-sm text-white placeholder-slate-600 focus:outline-none transition-all backdrop-blur-md"
-                  readOnly
-                />
-              </div>
-              <button className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-brand-purple to-brand-pink text-white text-sm font-semibold hover:opacity-90 transition shadow-lg shadow-brand-purple/20">
-                Search
-              </button>
-            </div>
+            <SearchHero />
 
             {/* Quick Stats */}
             <div className="flex items-center gap-6 mt-10">
@@ -216,13 +204,14 @@ export default async function Home() {
             {Object.entries(CATEGORY_META).map(([key, meta]) => {
               const isActive = categories.includes(key as typeof categories[number]);
               return (
-                <button
+                <Link
                   key={key}
+                  href={`/products?category=${key}`}
                   className={`group relative p-5 rounded-2xl border border-white/5 bg-gradient-to-b ${meta.color} backdrop-blur-md flex flex-col items-center gap-2 transition-all duration-300 hover:border-white/15 hover:scale-[1.03] hover:shadow-xl ${!isActive ? "opacity-40" : ""}`}
                 >
                   <span className="text-2xl group-hover:scale-110 transition-transform">{meta.emoji}</span>
                   <span className="text-[10px] font-bold text-white uppercase tracking-wider">{meta.label}</span>
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -259,62 +248,80 @@ export default async function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {products.map((product) => (
-                <div
-                  key={product.id}
-                  className="group bg-slate-900/40 border border-white/5 rounded-2xl overflow-hidden hover:border-brand-purple/30 hover:shadow-2xl hover:shadow-brand-purple/5 transition-all duration-300 hover:-translate-y-1"
-                >
-                  {/* Product Image Placeholder */}
-                  <div className="relative h-44 bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center overflow-hidden">
-                    <div className="text-4xl opacity-30 group-hover:opacity-50 group-hover:scale-110 transition-all duration-500">
-                      {CATEGORY_META[product.category]?.emoji || "📦"}
-                    </div>
-                    {/* Condition badge */}
-                    <div className="absolute top-3 left-3">
-                      <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-slate-950/80 border border-white/10 text-slate-300 uppercase tracking-wider backdrop-blur-md">
-                        {CONDITION_LABELS[product.condition] || product.condition}
-                      </span>
-                    </div>
-                    {/* Category badge */}
-                    <div className="absolute top-3 right-3">
-                      <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-brand-purple/20 border border-brand-purple/20 text-brand-pink uppercase tracking-wider backdrop-blur-md">
-                        {CATEGORY_META[product.category]?.label || product.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-5 h-5 rounded-md bg-gradient-to-br from-brand-purple/40 to-brand-pink/40 flex items-center justify-center text-[8px] font-black text-white">
-                        {product.seller.storeName.charAt(0)}
-                      </div>
-                      <Link
-                        href={`/store/${product.seller.handle}`}
-                        className="text-[10px] text-slate-500 hover:text-brand-pink transition font-medium"
-                      >
-                        {product.seller.storeName}
-                      </Link>
-                    </div>
-
-                    <h3 className="font-display font-bold text-sm text-white line-clamp-2 mb-3 group-hover:text-brand-pink transition-colors min-h-[2.5rem]">
-                      {product.title}
-                    </h3>
-
-                    <div className="flex items-end justify-between pt-3 border-t border-white/5">
-                      <div>
-                        <span className="text-[9px] text-slate-600 uppercase block mb-0.5">Price</span>
-                        <span className="font-display font-black text-lg text-white">
-                          GH₵ {Number(product.listingPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              {products.map((product) => {
+                const imageKeys = product.imageS3Keys as string[] || [];
+                const imageUrl = imageKeys.length > 0 ? `${S3_BASE_URL}/${imageKeys[0]}` : null;
+                return (
+                  <div
+                    key={product.id}
+                    className="group bg-slate-900/40 border border-white/5 rounded-2xl overflow-hidden hover:border-brand-purple/30 hover:shadow-2xl hover:shadow-brand-purple/5 transition-all duration-300 hover:-translate-y-1"
+                  >
+                    {/* Product Image */}
+                    <div className="relative h-44 bg-gradient-to-b from-slate-900 to-slate-950 flex items-center justify-center overflow-hidden">
+                      {imageUrl ? (
+                        <Image
+                          src={imageUrl}
+                          alt={product.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="text-4xl opacity-30 group-hover:opacity-50 group-hover:scale-110 transition-all duration-500">
+                          {CATEGORY_META[product.category]?.emoji || "📦"}
+                        </div>
+                      )}
+                      {/* Condition badge */}
+                      <div className="absolute top-3 left-3">
+                        <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-slate-950/80 border border-white/10 text-slate-300 uppercase tracking-wider backdrop-blur-md">
+                          {CONDITION_LABELS[product.condition] || product.condition}
                         </span>
                       </div>
-                      <button className="px-3 py-1.5 rounded-lg bg-brand-purple/10 text-brand-pink text-[10px] font-bold hover:bg-brand-purple hover:text-white transition-all border border-brand-purple/20">
-                        View →
-                      </button>
+                      {/* Category badge */}
+                      <div className="absolute top-3 right-3">
+                        <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-brand-purple/20 border border-brand-purple/20 text-brand-pink uppercase tracking-wider backdrop-blur-md">
+                          {CATEGORY_META[product.category]?.label || product.category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Product Info */}
+                    <div className="p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-5 h-5 rounded-md bg-gradient-to-br from-brand-purple/40 to-brand-pink/40 flex items-center justify-center text-[8px] font-black text-white">
+                          {product.seller.storeName.charAt(0)}
+                        </div>
+                        <Link
+                          href={`/store/${product.seller.handle}`}
+                          className="text-[10px] text-slate-500 hover:text-brand-pink transition font-medium"
+                        >
+                          {product.seller.storeName}
+                        </Link>
+                      </div>
+
+                      <h3 className="font-display font-bold text-sm text-white line-clamp-2 mb-3 group-hover:text-brand-pink transition-colors min-h-[2.5rem]">
+                        <Link href={`/products/${product.id}`}>{product.title}</Link>
+                      </h3>
+
+                      <div className="flex items-end justify-between pt-3 border-t border-white/5">
+                        <div>
+                          <span className="text-[9px] text-slate-600 uppercase block mb-0.5">Price</span>
+                          <span className="font-display font-black text-lg text-white">
+                            GH₵ {Number(product.listingPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <Link
+                          href={`/products/${product.id}`}
+                          className="px-3 py-1.5 rounded-lg bg-brand-purple/10 text-brand-pink text-[10px] font-bold hover:bg-brand-purple hover:text-white transition-all border border-brand-purple/20"
+                        >
+                          View →
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
