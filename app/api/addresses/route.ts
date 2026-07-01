@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole, AuthError } from "@/lib/auth-guards";
+import { AddressType } from "../../../generated/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: user.id,
         zoneId,
-        type: type as any,
+        type: type as AddressType,
         addressText: addressText.trim(),
         landmark: landmark ? landmark.trim() : null,
         recipientPhone: recipientPhone.trim(),
