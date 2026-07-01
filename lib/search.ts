@@ -2,7 +2,7 @@
 // Compliance: U-Shop SRD v1.1 §3.4
 
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "../generated/prisma";
+import { Prisma, ProductCategory, ProductCondition, SellerTier } from "../generated/prisma";
 
 export interface SearchParams {
   query: string;
@@ -37,15 +37,15 @@ export async function searchProducts(params: SearchParams) {
     return prisma.product.findMany({
       where: {
         status: "ACTIVE",
-        category: category ? (category as Prisma.ProductCategory) : undefined,
-        condition: condition ? (condition as Prisma.ProductCondition) : undefined,
+        category: category ? (category as ProductCategory) : undefined,
+        condition: condition ? (condition as ProductCondition) : undefined,
         listingPrice: {
           gte: minPrice !== undefined ? minPrice : undefined,
           lte: maxPrice !== undefined ? maxPrice : undefined,
         },
         seller: {
           campus: campus ? campus : undefined,
-          tier: sellerTier ? (sellerTier as Prisma.SellerTier) : undefined,
+          tier: sellerTier ? (sellerTier as SellerTier) : undefined,
         },
       },
       include: {
