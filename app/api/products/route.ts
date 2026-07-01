@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole, AuthError } from "@/lib/auth-guards";
 import { computeOrderPricing } from "@/lib/pricing";
 import { Prisma } from "../../../generated/prisma";
+import { searchProducts } from "@/lib/search";
 
 // ── Allowed categories and conditions (match Prisma enums) ────────
 const VALID_CATEGORIES = ["PHONES", "LAPTOPS", "AUDIO", "ACCESSORIES", "COMPONENTS", "CABLES", "GAMING", "OTHER"];
@@ -118,55 +119,12 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET /api/products — List the authenticated seller's products
- * Auth: requireRole("seller")
+ * GET /api/products — Public browse & search, OR Seller inventory list
  */
 export async function GET(request: NextRequest) {
   try {
-    const { user } = await requireRole(request, "seller");
-
-    const sellerProfile = await prisma.sellerProfile.findUnique({
-      where: { userId: user.id },
-      select: { id: true, commissionRate: true, tier: true, campus: true, storeName: true, handle: true, status: true },
-    });
-
-    if (!sellerProfile) {
-      return NextResponse.json({ error: "No seller profile found" }, { status: 404 });
-    }
-
-    if (sellerProfile.status !== "ACTIVE") {
-      return NextResponse.json({ error: "Seller account is not active" }, { status: 403 });
-    }
-
-    const products = await prisma.product.findMany({
-      where: {
-        sellerId: sellerProfile.id,
-        status: { not: "DELETED" },
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        category: true,
-        condition: true,
-        vendorPrice: true,
-        listingPrice: true,
-        commissionRate: true,
-        imageS3Keys: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Serialize Decimal fields to strings for JSON
-    const serialized = products.map((p) => ({
-      ...p,
-      vendorPrice: p.vendorPrice.toString(),
-      listingPrice: p.listingPrice.toString(),
-      commissionRate: p.commissionRate.toString(),
-    }));
+    const searchParams = request.nextUrl.searchParams;
+    const sellerPortal = searchParams.get("sellerPortal") === "true";
 
     const s3BaseUrl = `https://${
       process.env.S3_PRODUCT_BUCKET ||
@@ -176,16 +134,106 @@ export async function GET(request: NextRequest) {
       (process.env.AWS_REGION || "us-east-1").replace(/^.*\s/, "")
     }.amazonaws.com`;
 
+    if (sellerPortal) {
+      // ── List the authenticated seller's products ──────────────────
+      const { user } = await requireRole(request, "seller");
+
+      const sellerProfile = await prisma.sellerProfile.findUnique({
+        where: { userId: user.id },
+        select: { id: true, commissionRate: true, tier: true, campus: true, storeName: true, handle: true, status: true },
+      });
+
+      if (!sellerProfile) {
+        return NextResponse.json({ error: "No seller profile found" }, { status: 404 });
+      }
+
+      if (sellerProfile.status !== "ACTIVE") {
+        return NextResponse.json({ error: "Seller account is not active" }, { status: 403 });
+      }
+
+      const products = await prisma.product.findMany({
+        where: {
+          sellerId: sellerProfile.id,
+          status: { not: "DELETED" },
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          category: true,
+          condition: true,
+          vendorPrice: true,
+          listingPrice: true,
+          commissionRate: true,
+          imageS3Keys: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Serialize Decimal fields to strings for JSON
+      const serialized = products.map((p) => ({
+        ...p,
+        vendorPrice: p.vendorPrice.toString(),
+        listingPrice: p.listingPrice.toString(),
+        commissionRate: p.commissionRate.toString(),
+      }));
+
+      return NextResponse.json({
+        products: serialized,
+        seller: {
+          id: sellerProfile.id,
+          commissionRate: sellerProfile.commissionRate.toString(),
+          tier: sellerProfile.tier,
+          campus: sellerProfile.campus,
+          storeName: sellerProfile.storeName,
+          handle: sellerProfile.handle,
+        },
+        s3BaseUrl,
+      });
+    }
+
+    // ── Public Buyer Discovery Search/Browse ───────────────────────
+    const q = searchParams.get("q") || "";
+    const category = searchParams.get("category") || undefined;
+    const condition = searchParams.get("condition") || undefined;
+    const campus = searchParams.get("campus") || undefined;
+    const sellerTier = searchParams.get("sellerTier") || undefined;
+
+    const minPriceRaw = searchParams.get("minPrice");
+    const maxPriceRaw = searchParams.get("maxPrice");
+    const minPrice = minPriceRaw && !isNaN(Number(minPriceRaw)) ? Number(minPriceRaw) : undefined;
+    const maxPrice = maxPriceRaw && !isNaN(Number(maxPriceRaw)) ? Number(maxPriceRaw) : undefined;
+
+    const pageRaw = searchParams.get("page");
+    const pageSizeRaw = searchParams.get("pageSize");
+    const page = pageRaw && !isNaN(Number(pageRaw)) ? Number(pageRaw) : 1;
+    const pageSize = pageSizeRaw && !isNaN(Number(pageSizeRaw)) ? Number(pageSizeRaw) : 20;
+
+    const products = await searchProducts({
+      query: q,
+      category,
+      condition,
+      minPrice,
+      maxPrice,
+      campus,
+      sellerTier,
+      page,
+      pageSize,
+    });
+
+    // Serialize Decimal fields to strings
+    const serialized = products.map((p) => ({
+      ...p,
+      vendorPrice: p.vendorPrice.toString(),
+      listingPrice: p.listingPrice.toString(),
+      commissionRate: p.commissionRate.toString(),
+    }));
+
     return NextResponse.json({
       products: serialized,
-      seller: {
-        id: sellerProfile.id,
-        commissionRate: sellerProfile.commissionRate.toString(),
-        tier: sellerProfile.tier,
-        campus: sellerProfile.campus,
-        storeName: sellerProfile.storeName,
-        handle: sellerProfile.handle,
-      },
       s3BaseUrl,
     });
   } catch (error: unknown) {

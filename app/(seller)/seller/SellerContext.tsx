@@ -48,7 +48,7 @@ export function SellerProvider({ children }: { children: React.ReactNode }) {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/products?sellerPortal=true");
       if (!res.ok) {
         const data = await res.json();
         setError(data.error || "Failed to load products");

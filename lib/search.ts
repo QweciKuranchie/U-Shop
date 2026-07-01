@@ -2,7 +2,7 @@
 // Compliance: U-Shop SRD v1.1 §3.4
 
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "../generated/prisma";
+import { Prisma, ProductCategory, ProductCondition, SellerTier } from "../generated/prisma";
 
 export interface SearchParams {
   query: string;
@@ -30,14 +30,51 @@ export async function searchProducts(params: SearchParams) {
   } = params;
   const offset = (page - 1) * pageSize;
 
-  // Use raw query for GIN full-text search — Prisma ORM cannot express tsvector queries.
-  // Note: Column names must match the camelCase columns generated in PostgreSQL by Prisma, which are case-sensitive and quoted.
+  const trimmedQuery = query ? query.trim() : "";
+
+  // ── Fallback to standard Prisma if query is empty ─────────────────
+  if (!trimmedQuery) {
+    return prisma.product.findMany({
+      where: {
+        status: "ACTIVE",
+        category: category ? (category as ProductCategory) : undefined,
+        condition: condition ? (condition as ProductCondition) : undefined,
+        listingPrice: {
+          gte: minPrice !== undefined ? minPrice : undefined,
+          lte: maxPrice !== undefined ? maxPrice : undefined,
+        },
+        seller: {
+          campus: campus ? campus : undefined,
+          tier: sellerTier ? (sellerTier as SellerTier) : undefined,
+        },
+      },
+      include: {
+        seller: {
+          select: {
+            handle: true,
+            storeName: true,
+            campus: true,
+            tier: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: offset,
+      take: pageSize,
+    });
+  }
+
+  // ── Raw query for FTS + trigram matching when query is present ────
+  // ts_rank rank represents full text matching, and we add 0.5 if it is a trigram ILIKE match in the title.
   const results = await prisma.$queryRaw<Array<{ id: string; rank: number }>>`
     SELECT
       p.id,
-      ts_rank(
-        to_tsvector('english', coalesce(p.title,'') || ' ' || coalesce(p.description,'')),
-        plainto_tsquery('english', ${query})
+      (
+        ts_rank(
+          to_tsvector('english', coalesce(p.title,'') || ' ' || coalesce(p.description,'')),
+          plainto_tsquery('english', ${trimmedQuery})
+        ) +
+        CASE WHEN p.title ILIKE ${"%" + trimmedQuery + "%"} THEN 0.5 ELSE 0.0 END
       ) AS rank
     FROM products p
     JOIN seller_profiles sp ON sp.id = p."sellerId"
@@ -45,12 +82,13 @@ export async function searchProducts(params: SearchParams) {
       p.status = 'ACTIVE'
       AND (
         to_tsvector('english', coalesce(p.title,'') || ' ' || coalesce(p.description,''))
-        @@ plainto_tsquery('english', ${query})
+        @@ plainto_tsquery('english', ${trimmedQuery})
+        OR p.title ILIKE ${"%" + trimmedQuery + "%"}
       )
       ${category ? Prisma.sql`AND p.category = ${category}::"ProductCategory"` : Prisma.empty}
       ${condition ? Prisma.sql`AND p.condition = ${condition}::"ProductCondition"` : Prisma.empty}
-      ${minPrice ? Prisma.sql`AND p."listingPrice" >= ${minPrice}` : Prisma.empty}
-      ${maxPrice ? Prisma.sql`AND p."listingPrice" <= ${maxPrice}` : Prisma.empty}
+      ${minPrice !== undefined ? Prisma.sql`AND p."listingPrice" >= ${minPrice}::numeric` : Prisma.empty}
+      ${maxPrice !== undefined ? Prisma.sql`AND p."listingPrice" <= ${maxPrice}::numeric` : Prisma.empty}
       ${campus ? Prisma.sql`AND sp.campus = ${campus}` : Prisma.empty}
       ${sellerTier ? Prisma.sql`AND sp.tier = ${sellerTier}::"SellerTier"` : Prisma.empty}
     ORDER BY rank DESC
@@ -78,7 +116,7 @@ export async function searchProducts(params: SearchParams) {
   // Map products by ID for O(1) retrieval
   const productsMap = new Map(products.map((p) => [p.id, p]));
 
-  // Preserve database search relevance rank order instead of re-sorting by creation time
+  // Preserve database search relevance rank order
   return ids
     .map((id) => productsMap.get(id))
     .filter((p): p is NonNullable<typeof p> => p !== undefined);

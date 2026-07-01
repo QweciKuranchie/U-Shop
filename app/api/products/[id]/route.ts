@@ -251,3 +251,47 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+/**
+ * GET /api/products/[id] — Retrieve single product details for buyer view
+ * Restricts access to deleted products and strips seller contact fields
+ */
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            storeName: true,
+            handle: true,
+            campus: true,
+            tier: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!product || product.status === "DELETED") {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Format Decimal fields to strings for JSON
+    const serialized = {
+      ...product,
+      vendorPrice: product.vendorPrice.toString(),
+      listingPrice: product.listingPrice.toString(),
+      commissionRate: product.commissionRate.toString(),
+    };
+
+    return NextResponse.json({ product: serialized });
+  } catch (error: unknown) {
+    console.error("Fetch product detail error:", error);
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
