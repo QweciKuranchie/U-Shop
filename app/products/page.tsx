@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -89,7 +89,13 @@ export default function ProductsSearchPage() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SearchPageContent />
+      <Suspense fallback={
+        <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-t-pink-500 border-white/10 rounded-full animate-spin"></div>
+        </div>
+      }>
+        <SearchPageContent />
+      </Suspense>
     </QueryClientProvider>
   );
 }
