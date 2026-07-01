@@ -37,15 +37,15 @@ export async function searchProducts(params: SearchParams) {
     return prisma.product.findMany({
       where: {
         status: "ACTIVE",
-        category: category ? (category as any) : undefined,
-        condition: condition ? (condition as any) : undefined,
+        category: category ? (category as Prisma.ProductCategory) : undefined,
+        condition: condition ? (condition as Prisma.ProductCondition) : undefined,
         listingPrice: {
           gte: minPrice !== undefined ? minPrice : undefined,
           lte: maxPrice !== undefined ? maxPrice : undefined,
         },
         seller: {
           campus: campus ? campus : undefined,
-          tier: sellerTier ? (sellerTier as any) : undefined,
+          tier: sellerTier ? (sellerTier as Prisma.SellerTier) : undefined,
         },
       },
       include: {

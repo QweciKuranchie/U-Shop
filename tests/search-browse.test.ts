@@ -48,7 +48,7 @@ describe("Product Search & Browse Library (lib/search.ts)", () => {
       },
     ];
 
-    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as unknown as ReturnType<typeof prisma.product.findMany>);
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as unknown as Awaited<ReturnType<typeof prisma.product.findMany>>);
 
     const results = await searchProducts({ query: "" });
 
@@ -86,8 +86,8 @@ describe("Product Search & Browse Library (lib/search.ts)", () => {
       },
     ];
 
-    vi.mocked(prisma.$queryRaw).mockResolvedValue(mockRawResults as unknown as ReturnType<typeof prisma.$queryRaw>);
-    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as unknown as ReturnType<typeof prisma.product.findMany>);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue(mockRawResults as unknown as Awaited<ReturnType<typeof prisma.$queryRaw>>);
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as unknown as Awaited<ReturnType<typeof prisma.product.findMany>>);
 
     const results = await searchProducts({ query: "iPhone" });
 
@@ -98,7 +98,7 @@ describe("Product Search & Browse Library (lib/search.ts)", () => {
   });
 
   it("should enforce category and campus filters in raw SQL", async () => {
-    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as unknown as ReturnType<typeof prisma.$queryRaw>);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as unknown as Awaited<ReturnType<typeof prisma.$queryRaw>>);
 
     await searchProducts({
       query: "laptop",
@@ -130,7 +130,7 @@ describe("Product Search & Browse Library (lib/search.ts)", () => {
       },
     ];
 
-    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as unknown as ReturnType<typeof prisma.product.findMany>);
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as unknown as Awaited<ReturnType<typeof prisma.product.findMany>>);
 
     const results = await searchProducts({ query: "" });
     const seller = results[0]?.seller as unknown as { storeName: string; whatsappNumber?: string; phone?: string; email?: string };
