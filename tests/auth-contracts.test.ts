@@ -37,6 +37,13 @@ vi.mock("next/server", () => {
   };
 });
 
+// Mock next/dist/client/components/redirect-error
+vi.mock("next/dist/client/components/redirect-error", () => ({
+  isRedirectError: vi.fn((error: unknown) => {
+    return error instanceof Error && error.message.startsWith("Redirect:");
+  }),
+}));
+
 // Mock better-auth and its adapter/client
 vi.mock("../lib/auth", () => ({
   auth: {
@@ -264,8 +271,8 @@ describe("T3 Auth Contracts", () => {
     it("should render children if user is not logged in", async () => {
       vi.mocked(auth.api.getSession).mockResolvedValue(null);
 
-      const result = await AuthLayout({ children: "auth-form" });
-      expect(result).toEqual("auth-form");
+      const result = await AuthLayout({ children: "auth-form" }) as { props: { children: string } };
+      expect(result.props.children).toEqual("auth-form");
     });
   });
 
@@ -336,8 +343,8 @@ describe("T3 Auth Contracts", () => {
         mockSession as unknown as AwaitedSession
       );
 
-      const result = await BuyerLayout({ children: "buyer-content" });
-      expect(result).toEqual("buyer-content");
+      const result = await BuyerLayout({ children: "buyer-content" }) as { props: { children: string } };
+      expect(result.props.children).toEqual("buyer-content");
     });
   });
 
@@ -364,8 +371,8 @@ describe("T3 Auth Contracts", () => {
       m.set("x-invoke-path", "/seller/dashboard");
       vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
 
-      const result = await SellerLayout({ children: "seller-content" });
-      expect(result).toEqual("seller-content");
+      const result = await SellerLayout({ children: "seller-content" }) as { props: { children: string } };
+      expect(result.props.children).toEqual("seller-content");
     });
 
     it("should allow provisional buyers accessing /seller/application if they have a pending profile", async () => {
@@ -395,8 +402,8 @@ describe("T3 Auth Contracts", () => {
       m.set("x-invoke-path", "/seller/application");
       vi.mocked(headers).mockResolvedValue(m as unknown as Headers);
 
-      const result = await SellerLayout({ children: "seller-content" });
-      expect(result).toEqual("seller-content");
+      const result = await SellerLayout({ children: "seller-content" }) as { props: { children: string } };
+      expect(result.props.children).toEqual("seller-content");
     });
 
     it("should redirect provisional buyers to /unauthorized if accessing dashboard /seller/dashboard", async () => {

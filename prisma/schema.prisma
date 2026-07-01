@@ -197,6 +197,7 @@ model SellerProfile {
   kycDocKeys      Json         @default("[]")  // String[] of S3 keys — private bucket
   rejectionReason String?
   otpVerified     Boolean      @default(false)
+  applicationSubmitted Boolean @default(false)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -415,10 +416,11 @@ model SellerOtp {
   otpHash    String
   expiresAt  DateTime
   attempts   Int      @default(0)
-  isVerified Boolean  @default(false)
-  isLocked   Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isVerified   Boolean   @default(false)
+  isLocked     Boolean   @default(false)
+  lockoutUntil DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@map("seller_otps")
 }

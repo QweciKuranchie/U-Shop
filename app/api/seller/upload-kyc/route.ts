@@ -73,17 +73,28 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Upload to private S3 ──────────────────────────────────────
+    const existingKeys = (sellerProfile.kycDocKeys as string[]) || [];
+
+    // ── Enforce 3-document cap before uploading ───────────────────
+    if (sellerProfile.status !== "REJECTED" && existingKeys.length >= 3) {
+      return NextResponse.json(
+        { error: "Maximum of 3 KYC documents allowed. Please remove an existing document before uploading more." },
+        { status: 400 }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const s3Key = await uploadKYCDocument(buffer, file.type, userId);
 
-    // ── Append S3 key to SellerProfile.kycDocKeys ─────────────────
-    const existingKeys = (sellerProfile.kycDocKeys as string[]) || [];
-    await prisma.sellerProfile.update({
-      where: { id: sellerProfile.id },
-      data: {
-        kycDocKeys: [...existingKeys, s3Key] as unknown as Prisma.InputJsonValue,
-      },
-    });
+    // ── Append S3 key to SellerProfile.kycDocKeys (only for non-rejected, fresh registrations) ──
+    if (sellerProfile.status !== "REJECTED") {
+      await prisma.sellerProfile.update({
+        where: { id: sellerProfile.id },
+        data: {
+          kycDocKeys: [...existingKeys, s3Key] as unknown as Prisma.InputJsonValue,
+        },
+      });
+    }
 
     return NextResponse.json({ s3Key }, { status: 201 });
   } catch (error: unknown) {
